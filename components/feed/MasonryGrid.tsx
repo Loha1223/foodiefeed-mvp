@@ -14,18 +14,29 @@ export function MasonryGrid({
   onPostClick,
   onPostLike,
 }: MasonryGridProps) {
+  const sectionTitle = "探索限時美食情報";
+  const sectionDescription = "點擊卡片可查看詳情、留言與即時互動。";
+
   if (posts.length === 0) {
     return (
-      <section className="mx-auto max-w-6xl px-4 py-12 text-center sm:px-6">
-        <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50 px-6 py-12 text-stone-500">
-          目前沒有符合搜尋或篩選條件的美食情報
+      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-stone-950">{sectionTitle}</h2>
+          <p className="mt-1 text-sm text-stone-500">{sectionDescription}</p>
+        </div>
+        <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50 px-6 py-12 text-center text-stone-500">
+          目前沒有符合條件的情報，請調整搜尋或篩選條件後再試。
         </div>
       </section>
     );
   }
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+    <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <div className="mb-4">
+        <h2 className="text-xl font-bold text-stone-950">{sectionTitle}</h2>
+        <p className="mt-1 text-sm text-stone-500">{sectionDescription}</p>
+      </div>
       <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
         {posts.map((post) => (
           <div key={post.id} className="mb-5 break-inside-avoid">
