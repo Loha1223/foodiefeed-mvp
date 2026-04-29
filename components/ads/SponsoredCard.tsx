@@ -14,9 +14,11 @@ type SponsoredCardProps = {
 
 export function SponsoredCard({ sponsoredPost }: SponsoredCardProps) {
   const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [hasImageError, setHasImageError] = useState(false);
   const cardRef = useRef<HTMLElement | null>(null);
   const hasTrackedImpressionRef = useRef(false);
   const imageUrl = sponsoredPost.image_url || "/placeholder-food.jpg";
+  const displayImageUrl = hasImageError ? "/placeholder-food.jpg" : imageUrl;
 
   function getPagePath() {
     return typeof window === "undefined" ? undefined : window.location.pathname;
@@ -71,6 +73,11 @@ export function SponsoredCard({ sponsoredPost }: SponsoredCardProps) {
     return () => observer.disconnect();
   }, [sponsoredPost.id]);
 
+  useEffect(() => {
+    setIsImageLoaded(false);
+    setHasImageError(false);
+  }, [sponsoredPost.id, sponsoredPost.image_url]);
+
   function handleCtaClick() {
     void trackAdClick({
       ...buildTrackingInput(),
@@ -88,15 +95,15 @@ export function SponsoredCard({ sponsoredPost }: SponsoredCardProps) {
           <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-amber-100 to-stone-200" />
         ) : null}
         <img
-          src={imageUrl}
+          src={displayImageUrl}
           alt={sponsoredPost.title}
           className={`h-auto min-h-48 w-full object-cover transition duration-300 group-hover:scale-105 ${
             isImageLoaded ? "opacity-100" : "opacity-0"
           }`}
           onLoad={() => setIsImageLoaded(true)}
-          onError={(event) => {
+          onError={() => {
             setIsImageLoaded(true);
-            event.currentTarget.src = "/placeholder-food.jpg";
+            setHasImageError(true);
           }}
         />
         <span className="absolute left-3 top-3 rounded-full bg-amber-600 px-3 py-1 text-xs font-semibold text-white shadow-sm">

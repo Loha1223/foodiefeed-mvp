@@ -10,6 +10,12 @@ import type {
 const AD_SESSION_STORAGE_KEY = "foodiefeed_ad_session_id";
 const AD_STATS_TRACKING_LIMIT = 5000;
 
+export type SponsoredPostStatus =
+  | "active"
+  | "scheduled"
+  | "ended"
+  | "disabled";
+
 type SponsoredPostRow = {
   id: number;
   created_at: string;
@@ -95,35 +101,65 @@ function normalizeOptionalText(value: string | undefined) {
   return trimmedValue ? trimmedValue : null;
 }
 
-function validateSponsoredPostInput(input: CreateSponsoredPostInput) {
-  if (!input.brand_name.trim()) {
-    throw new Error("請輸入品牌名稱");
+function isValidHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export function validateSponsoredPostInput(
+  input: CreateSponsoredPostInput | UpdateSponsoredPostInput,
+): string | null {
+  if (input.brand_name !== undefined && !input.brand_name.trim()) {
+    return "請輸入品牌名稱";
   }
 
-  if (!input.title.trim()) {
-    throw new Error("請輸入廣告標題");
+  if (input.title !== undefined && !input.title.trim()) {
+    return "請輸入廣告標題";
   }
 
-  if (!input.ends_at.trim()) {
-    throw new Error("請設定結束時間");
+  if (input.ends_at !== undefined && !input.ends_at.trim()) {
+    return "請設定結束時間";
   }
 
   const startsAt = input.starts_at?.trim()
     ? new Date(input.starts_at).getTime()
     : null;
-  const endsAt = new Date(input.ends_at).getTime();
+  const endsAt = input.ends_at?.trim()
+    ? new Date(input.ends_at).getTime()
+    : null;
 
-  if (Number.isNaN(endsAt)) {
-    throw new Error("結束時間格式不正確");
+  if (endsAt !== null && Number.isNaN(endsAt)) {
+    return "結束時間格式不正確";
   }
 
   if (startsAt !== null && Number.isNaN(startsAt)) {
-    throw new Error("開始時間格式不正確");
+    return "開始時間格式不正確";
   }
 
-  if (startsAt !== null && endsAt <= startsAt) {
-    throw new Error("結束時間必須晚於開始時間");
+  if (startsAt !== null && endsAt !== null && endsAt <= startsAt) {
+    return "結束時間必須晚於開始時間";
   }
+
+  if (input.target_url?.trim() && !isValidHttpUrl(input.target_url.trim())) {
+    return "target_url 必須是有效的 http:// 或 https:// URL";
+  }
+
+  if (input.image_url?.trim() && !isValidHttpUrl(input.image_url.trim())) {
+    return "image_url 必須是有效的 http:// 或 https:// URL";
+  }
+
+  if (
+    input.priority !== undefined &&
+    (typeof input.priority !== "number" || !Number.isFinite(input.priority))
+  ) {
+    return "priority 必須是數字";
+  }
+
+  return null;
 }
 
 function buildSponsoredPostPayload(
@@ -186,6 +222,44 @@ function buildSponsoredPostPayload(
   }
 
   return payload;
+}
+
+export function getSponsoredPostStatus(
+  ad: Pick<SponsoredPost, "is_active" | "starts_at" | "ends_at">,
+): SponsoredPostStatus {
+  if (!ad.is_active) {
+    return "disabled";
+  }
+
+  const now = Date.now();
+  const startsAt = new Date(ad.starts_at).getTime();
+  const endsAt = new Date(ad.ends_at).getTime();
+
+  if (now < startsAt) {
+    return "scheduled";
+  }
+
+  if (now > endsAt) {
+    return "ended";
+  }
+
+  return "active";
+}
+
+export function getSponsoredPostStatusLabel(status: SponsoredPostStatus) {
+  if (status === "active") {
+    return "投放中";
+  }
+
+  if (status === "scheduled") {
+    return "尚未開始";
+  }
+
+  if (status === "ended") {
+    return "已結束";
+  }
+
+  return "停用";
 }
 
 function buildNullOrEqualsFilter(column: string, value?: string) {
@@ -260,7 +334,12 @@ export async function fetchAllSponsoredPosts(): Promise<SponsoredPost[]> {
 export async function createSponsoredPost(
   input: CreateSponsoredPostInput,
 ): Promise<SponsoredPost> {
-  validateSponsoredPostInput(input);
+  const validationError = validateSponsoredPostInput(input);
+
+  if (validationError) {
+    throw new Error(validationError);
+  }
+
   const supabase = getClientOrThrow();
   const payload = {
     ...buildSponsoredPostPayload(input),
@@ -286,6 +365,12 @@ export async function updateSponsoredPost(
   id: number,
   input: UpdateSponsoredPostInput,
 ): Promise<SponsoredPost> {
+  const validationError = validateSponsoredPostInput(input);
+
+  if (validationError) {
+    throw new Error(validationError);
+  }
+
   const supabase = getClientOrThrow();
   const payload = buildSponsoredPostPayload(input);
 

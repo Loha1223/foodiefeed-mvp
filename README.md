@@ -297,21 +297,43 @@ order by sp.id desc;
 
 表單欄位：
 
-- `brand_name`
-- `title`
-- `description`
-- `image_url`
-- `target_url`
-- `city`
-- `district`
-- `category`
-- `placement`
-- `starts_at`
-- `ends_at`
-- `priority`
-- `is_active`
+- 基本資訊：`brand_name`、`title`、`description`
+- 素材與連結：`image_url`、`target_url`
+- 投放條件：`city`、`district`、`category`、`placement`
+- 投放設定：`starts_at`、`ends_at`、`priority`、`is_active`
 
-本階段 `image_url` 只支援 URL 輸入，不支援 Supabase Storage 圖片上傳。刪除 `sponsored_posts` 時，對應的 `ad_impressions` 與 `ad_clicks` 會因 foreign key `on delete cascade` 一併刪除。
+表單驗證：
+
+- `brand_name` 必填。
+- `title` 必填。
+- `ends_at` 必填。
+- `ends_at` 必須晚於 `starts_at`。
+- `image_url` 若有值，必須是有效的 `http://` 或 `https://` URL。
+- `target_url` 若有值，必須是有效的 `http://` 或 `https://` URL。
+- `priority` 必須是數字。
+- `placement` 空白時預設使用 `feed`。
+
+素材與時間：
+
+- 本階段 `image_url` 只支援 URL 輸入，不支援 Supabase Storage 圖片上傳。
+- `image_url` 可空白，前台 SponsoredCard 會使用 `/placeholder-food.jpg`。
+- 廣告管理表單會提供 image preview；若圖片無法預覽，前台仍會使用 fallback。
+- `starts_at` / `ends_at` 以目前瀏覽器時區輸入，儲存後由 Supabase 轉為時間戳。
+
+狀態判斷：
+
+- `is_active = false`：停用
+- `now < starts_at`：尚未開始
+- `now > ends_at`：已結束
+- 其他：投放中
+
+列表功能：
+
+- 可搜尋 `brand_name` / `title` / `city` / `district` / `category`。
+- 可依狀態篩選：全部、投放中、尚未開始、已結束、停用。
+- 會顯示 image_url / target_url 是否存在。
+
+刪除 `sponsored_posts` 時，對應的 `ad_impressions` 與 `ad_clicks` 會因 foreign key `on delete cascade` 一併刪除。
 
 本階段仍不做付款、報表匯出、點擊 / 曝光去重、廣告審核流程或操作紀錄。正式營運前建議補上廣告審核、操作 audit log、素材管理、付款狀態與投放預算控管。
 
@@ -418,6 +440,11 @@ npm run dev
 44. 停用 sponsored post，確認首頁不再顯示該 ad。
 45. 重新啟用 sponsored post，確認首頁可再次顯示。
 46. 刪除 sponsored post，確認該筆廣告移除，相關 `ad_impressions` / `ad_clicks` 也因 cascade 移除。
+47. 在廣告管理輸入錯誤 `target_url`，確認無法送出並顯示 inline error。
+48. 在廣告管理輸入錯誤 `image_url`，確認顯示 URL 錯誤；若 URL 格式正確但圖片載入失敗，確認顯示預覽失敗提示。
+49. 設定 `starts_at` 晚於 `ends_at`，確認無法送出。
+50. 使用搜尋與狀態篩選，確認列表可依 brand / title / city / district / category 與投放狀態篩選。
+51. 確認 SponsoredCard 圖片載入失敗時會 fallback 到 `/placeholder-food.jpg`，且曝光 / 點擊 tracking 仍可運作。
 
 ## 驗證指令
 

@@ -1,13 +1,17 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   createSponsoredPost,
   deleteSponsoredPost,
   fetchAllSponsoredPosts,
+  getSponsoredPostStatus,
+  getSponsoredPostStatusLabel,
   toggleSponsoredPostActive,
   updateSponsoredPost,
+  validateSponsoredPostInput,
+  type SponsoredPostStatus,
 } from "@/lib/ads";
 import type {
   CreateSponsoredPostInput,
@@ -37,6 +41,8 @@ type AdFormState = {
   is_active: boolean;
 };
 
+type StatusFilter = SponsoredPostStatus | "all";
+
 const emptyForm: AdFormState = {
   brand_name: "",
   title: "",
@@ -58,7 +64,9 @@ function formatDateTime(value: string) {
 }
 
 function toDateTimeLocalValue(value: string) {
-  return new Date(value).toISOString().slice(0, 16);
+  const date = new Date(value);
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 16);
 }
 
 function toFormState(ad: SponsoredPost): AdFormState {
@@ -79,39 +87,6 @@ function toFormState(ad: SponsoredPost): AdFormState {
   };
 }
 
-function validateForm(form: AdFormState) {
-  if (!form.brand_name.trim()) {
-    return "請輸入品牌名稱";
-  }
-
-  if (!form.title.trim()) {
-    return "請輸入廣告標題";
-  }
-
-  if (!form.ends_at.trim()) {
-    return "請設定結束時間";
-  }
-
-  const startsAt = form.starts_at.trim()
-    ? new Date(form.starts_at).getTime()
-    : null;
-  const endsAt = new Date(form.ends_at).getTime();
-
-  if (Number.isNaN(endsAt)) {
-    return "結束時間格式不正確";
-  }
-
-  if (startsAt !== null && Number.isNaN(startsAt)) {
-    return "開始時間格式不正確";
-  }
-
-  if (startsAt !== null && endsAt <= startsAt) {
-    return "結束時間必須晚於開始時間";
-  }
-
-  return null;
-}
-
 function toInput(form: AdFormState): CreateSponsoredPostInput {
   return {
     brand_name: form.brand_name,
@@ -125,9 +100,44 @@ function toInput(form: AdFormState): CreateSponsoredPostInput {
     placement: form.placement || "feed",
     starts_at: form.starts_at,
     ends_at: form.ends_at,
-    priority: Number(form.priority || 0),
+    priority: Number(form.priority),
     is_active: form.is_active,
   };
+}
+
+function getStatusClass(status: SponsoredPostStatus) {
+  if (status === "active") {
+    return "bg-emerald-50 text-emerald-700";
+  }
+
+  if (status === "scheduled") {
+    return "bg-sky-50 text-sky-700";
+  }
+
+  if (status === "ended") {
+    return "bg-stone-100 text-stone-600";
+  }
+
+  return "bg-amber-50 text-amber-700";
+}
+
+function getUrlInlineError(value: string, label: string) {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  try {
+    const url = new URL(trimmedValue);
+    if (url.protocol === "http:" || url.protocol === "https:") {
+      return null;
+    }
+  } catch {
+    return `${label} 必須是有效的 http:// 或 https:// URL`;
+  }
+
+  return `${label} 必須是有效的 http:// 或 https:// URL`;
 }
 
 export function AdminAdManagerPanel({
@@ -144,8 +154,44 @@ export function AdminAdManagerPanel({
   const [actionAdId, setActionAdId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [imagePreviewFailed, setImagePreviewFailed] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const isEditing = editingAdId !== null;
+  const imageUrl = form.image_url.trim();
+  const imageUrlError = getUrlInlineError(form.image_url, "image_url");
+  const targetUrlError = getUrlInlineError(form.target_url, "target_url");
+
+  const filteredAds = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+
+    return ads.filter((ad) => {
+      const status = getSponsoredPostStatus(ad);
+
+      if (statusFilter !== "all" && status !== statusFilter) {
+        return false;
+      }
+
+      if (!keyword) {
+        return true;
+      }
+
+      const searchable = [
+        ad.brand_name,
+        ad.title,
+        ad.city,
+        ad.district,
+        ad.category,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchable.includes(keyword);
+    });
+  }, [ads, searchTerm, statusFilter]);
 
   async function loadAds() {
     if (!isAdmin || isLoading) {
@@ -180,29 +226,39 @@ export function AdminAdManagerPanel({
     }
   }, [isOpen, isAdmin]);
 
+  useEffect(() => {
+    setImagePreviewFailed(false);
+  }, [form.image_url]);
+
   function updateForm<K extends keyof AdFormState>(
     key: K,
     value: AdFormState[K],
   ) {
     setForm((current) => ({ ...current, [key]: value }));
+    setFormError(null);
+    setSuccessMessage(null);
   }
 
   function resetForm() {
     setForm(emptyForm);
     setEditingAdId(null);
     setFormError(null);
+    setSuccessMessage(null);
+    setImagePreviewFailed(false);
   }
 
   function handleEdit(ad: SponsoredPost) {
     setEditingAdId(ad.id);
     setForm(toFormState(ad));
     setFormError(null);
+    setSuccessMessage(null);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const validationError = validateForm(form);
+    const input = toInput(form);
+    const validationError = validateSponsoredPostInput(input);
     if (validationError) {
       setFormError(validationError);
       return;
@@ -210,19 +266,23 @@ export function AdminAdManagerPanel({
 
     setIsSubmitting(true);
     setFormError(null);
+    setSuccessMessage(null);
 
     try {
       if (editingAdId === null) {
-        const createdAd = await createSponsoredPost(toInput(form));
+        const createdAd = await createSponsoredPost(input);
         setAds((currentAds) => [createdAd, ...currentAds]);
+        resetForm();
+        setSuccessMessage("廣告已新增。");
       } else {
-        const updatedAd = await updateSponsoredPost(editingAdId, toInput(form));
+        const updatedAd = await updateSponsoredPost(editingAdId, input);
         setAds((currentAds) =>
           currentAds.map((ad) => (ad.id === updatedAd.id ? updatedAd : ad)),
         );
+        resetForm();
+        setSuccessMessage("廣告已更新，已離開編輯模式。");
       }
 
-      resetForm();
       onAdsChanged?.();
     } catch (submitError) {
       console.warn(
@@ -269,7 +329,11 @@ export function AdminAdManagerPanel({
   }
 
   async function handleDelete(ad: SponsoredPost) {
-    if (!window.confirm(`確定要刪除「${ad.title}」嗎？相關曝光與點擊資料也會一併刪除。`)) {
+    if (
+      !window.confirm(
+        `刪除廣告會同步刪除曝光與點擊紀錄，確定要刪除「${ad.title}」嗎？`,
+      )
+    ) {
       return;
     }
 
@@ -345,15 +409,22 @@ export function AdminAdManagerPanel({
         ) : null}
 
         {isAdmin ? (
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,360px)_1fr]">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,380px)_1fr]">
             <form
               onSubmit={handleSubmit}
               className="rounded-lg border border-stone-200 bg-stone-50 p-4"
             >
               <div className="mb-4 flex items-center justify-between gap-3">
-                <h3 className="font-semibold text-stone-950">
-                  {isEditing ? "編輯廣告" : "新增廣告"}
-                </h3>
+                <div>
+                  <h3 className="font-semibold text-stone-950">
+                    {isEditing ? "編輯廣告" : "新增廣告"}
+                  </h3>
+                  {isEditing ? (
+                    <p className="mt-1 text-xs text-stone-500">
+                      正在編輯：{form.title || "未命名廣告"}
+                    </p>
+                  ) : null}
+                </div>
                 {isEditing ? (
                   <button
                     type="button"
@@ -370,147 +441,212 @@ export function AdminAdManagerPanel({
                   {formError}
                 </div>
               ) : null}
+              {successMessage ? (
+                <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                  {successMessage}
+                </div>
+              ) : null}
 
-              <div className="grid gap-3">
-                <label className="grid gap-1 text-sm font-medium text-stone-700">
-                  品牌名稱
-                  <input
-                    value={form.brand_name}
-                    onChange={(event) =>
-                      updateForm("brand_name", event.target.value)
-                    }
-                    className="rounded-md border border-stone-300 px-3 py-2 font-normal"
-                    required
-                  />
-                </label>
-                <label className="grid gap-1 text-sm font-medium text-stone-700">
-                  廣告標題
-                  <input
-                    value={form.title}
-                    onChange={(event) => updateForm("title", event.target.value)}
-                    className="rounded-md border border-stone-300 px-3 py-2 font-normal"
-                    required
-                  />
-                </label>
-                <label className="grid gap-1 text-sm font-medium text-stone-700">
-                  描述
-                  <textarea
-                    value={form.description}
-                    onChange={(event) =>
-                      updateForm("description", event.target.value)
-                    }
-                    className="min-h-20 rounded-md border border-stone-300 px-3 py-2 font-normal"
-                  />
-                </label>
-                <label className="grid gap-1 text-sm font-medium text-stone-700">
-                  image_url
-                  <input
-                    value={form.image_url}
-                    onChange={(event) =>
-                      updateForm("image_url", event.target.value)
-                    }
-                    className="rounded-md border border-stone-300 px-3 py-2 font-normal"
-                    placeholder="https://..."
-                  />
-                </label>
-                <label className="grid gap-1 text-sm font-medium text-stone-700">
-                  target_url
-                  <input
-                    value={form.target_url}
-                    onChange={(event) =>
-                      updateForm("target_url", event.target.value)
-                    }
-                    className="rounded-md border border-stone-300 px-3 py-2 font-normal"
-                    placeholder="https://..."
-                  />
-                </label>
-                <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-5">
+                <fieldset className="space-y-3">
+                  <legend className="text-sm font-semibold text-stone-950">
+                    基本資訊
+                  </legend>
                   <label className="grid gap-1 text-sm font-medium text-stone-700">
-                    縣市
+                    品牌名稱
                     <input
-                      value={form.city}
-                      onChange={(event) => updateForm("city", event.target.value)}
+                      value={form.brand_name}
+                      onChange={(event) =>
+                        updateForm("brand_name", event.target.value)
+                      }
                       className="rounded-md border border-stone-300 px-3 py-2 font-normal"
+                      required
                     />
                   </label>
                   <label className="grid gap-1 text-sm font-medium text-stone-700">
-                    行政區
+                    廣告標題
                     <input
-                      value={form.district}
+                      value={form.title}
                       onChange={(event) =>
-                        updateForm("district", event.target.value)
+                        updateForm("title", event.target.value)
+                      }
+                      className="rounded-md border border-stone-300 px-3 py-2 font-normal"
+                      required
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm font-medium text-stone-700">
+                    描述
+                    <textarea
+                      value={form.description}
+                      onChange={(event) =>
+                        updateForm("description", event.target.value)
+                      }
+                      className="min-h-20 rounded-md border border-stone-300 px-3 py-2 font-normal"
+                    />
+                  </label>
+                </fieldset>
+
+                <fieldset className="space-y-3 border-t border-stone-200 pt-4">
+                  <legend className="text-sm font-semibold text-stone-950">
+                    素材與連結
+                  </legend>
+                  <label className="grid gap-1 text-sm font-medium text-stone-700">
+                    image_url
+                    <input
+                      value={form.image_url}
+                      onChange={(event) =>
+                        updateForm("image_url", event.target.value)
+                      }
+                      className="rounded-md border border-stone-300 px-3 py-2 font-normal"
+                      placeholder="https://..."
+                    />
+                    {imageUrlError ? (
+                      <span className="text-xs text-red-700">{imageUrlError}</span>
+                    ) : null}
+                  </label>
+                  <div className="overflow-hidden rounded-md border border-stone-200 bg-white">
+                    {imageUrl ? (
+                      imagePreviewFailed ? (
+                        <div className="px-3 py-6 text-center text-sm text-amber-700">
+                          圖片無法預覽，前台會使用 fallback。
+                        </div>
+                      ) : (
+                        <img
+                          src={imageUrl}
+                          alt="廣告素材預覽"
+                          className="h-40 w-full object-cover"
+                          onError={() => setImagePreviewFailed(true)}
+                        />
+                      )
+                    ) : (
+                      <div className="px-3 py-6 text-center text-sm text-stone-500">
+                        未提供圖片，前台會使用預設圖。
+                      </div>
+                    )}
+                  </div>
+                  <label className="grid gap-1 text-sm font-medium text-stone-700">
+                    target_url
+                    <input
+                      value={form.target_url}
+                      onChange={(event) =>
+                        updateForm("target_url", event.target.value)
+                      }
+                      className="rounded-md border border-stone-300 px-3 py-2 font-normal"
+                      placeholder="https://..."
+                    />
+                    {targetUrlError ? (
+                      <span className="text-xs text-red-700">
+                        {targetUrlError}
+                      </span>
+                    ) : null}
+                  </label>
+                </fieldset>
+
+                <fieldset className="space-y-3 border-t border-stone-200 pt-4">
+                  <legend className="text-sm font-semibold text-stone-950">
+                    投放條件
+                  </legend>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="grid gap-1 text-sm font-medium text-stone-700">
+                      縣市
+                      <input
+                        value={form.city}
+                        onChange={(event) =>
+                          updateForm("city", event.target.value)
+                        }
+                        className="rounded-md border border-stone-300 px-3 py-2 font-normal"
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm font-medium text-stone-700">
+                      行政區
+                      <input
+                        value={form.district}
+                        onChange={(event) =>
+                          updateForm("district", event.target.value)
+                        }
+                        className="rounded-md border border-stone-300 px-3 py-2 font-normal"
+                      />
+                    </label>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="grid gap-1 text-sm font-medium text-stone-700">
+                      類別
+                      <input
+                        value={form.category}
+                        onChange={(event) =>
+                          updateForm("category", event.target.value)
+                        }
+                        className="rounded-md border border-stone-300 px-3 py-2 font-normal"
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm font-medium text-stone-700">
+                      版位
+                      <input
+                        value={form.placement}
+                        onChange={(event) =>
+                          updateForm("placement", event.target.value)
+                        }
+                        className="rounded-md border border-stone-300 px-3 py-2 font-normal"
+                      />
+                    </label>
+                  </div>
+                </fieldset>
+
+                <fieldset className="space-y-3 border-t border-stone-200 pt-4">
+                  <legend className="text-sm font-semibold text-stone-950">
+                    投放設定
+                  </legend>
+                  <p className="text-xs leading-5 text-stone-500">
+                    時間以目前瀏覽器時區輸入，儲存後由 Supabase 轉為時間戳。
+                  </p>
+                  <label className="grid gap-1 text-sm font-medium text-stone-700">
+                    開始時間
+                    <input
+                      type="datetime-local"
+                      value={form.starts_at}
+                      onChange={(event) =>
+                        updateForm("starts_at", event.target.value)
                       }
                       className="rounded-md border border-stone-300 px-3 py-2 font-normal"
                     />
                   </label>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
                   <label className="grid gap-1 text-sm font-medium text-stone-700">
-                    類別
+                    結束時間
                     <input
-                      value={form.category}
+                      type="datetime-local"
+                      value={form.ends_at}
                       onChange={(event) =>
-                        updateForm("category", event.target.value)
+                        updateForm("ends_at", event.target.value)
                       }
                       className="rounded-md border border-stone-300 px-3 py-2 font-normal"
+                      required
                     />
                   </label>
-                  <label className="grid gap-1 text-sm font-medium text-stone-700">
-                    版位
-                    <input
-                      value={form.placement}
-                      onChange={(event) =>
-                        updateForm("placement", event.target.value)
-                      }
-                      className="rounded-md border border-stone-300 px-3 py-2 font-normal"
-                    />
-                  </label>
-                </div>
-                <label className="grid gap-1 text-sm font-medium text-stone-700">
-                  開始時間
-                  <input
-                    type="datetime-local"
-                    value={form.starts_at}
-                    onChange={(event) =>
-                      updateForm("starts_at", event.target.value)
-                    }
-                    className="rounded-md border border-stone-300 px-3 py-2 font-normal"
-                  />
-                </label>
-                <label className="grid gap-1 text-sm font-medium text-stone-700">
-                  結束時間
-                  <input
-                    type="datetime-local"
-                    value={form.ends_at}
-                    onChange={(event) => updateForm("ends_at", event.target.value)}
-                    className="rounded-md border border-stone-300 px-3 py-2 font-normal"
-                    required
-                  />
-                </label>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="grid gap-1 text-sm font-medium text-stone-700">
-                    Priority
-                    <input
-                      type="number"
-                      value={form.priority}
-                      onChange={(event) =>
-                        updateForm("priority", event.target.value)
-                      }
-                      className="rounded-md border border-stone-300 px-3 py-2 font-normal"
-                    />
-                  </label>
-                  <label className="mt-6 flex items-center gap-2 text-sm font-medium text-stone-700">
-                    <input
-                      type="checkbox"
-                      checked={form.is_active}
-                      onChange={(event) =>
-                        updateForm("is_active", event.target.checked)
-                      }
-                      className="h-4 w-4 rounded border-stone-300"
-                    />
-                    啟用
-                  </label>
-                </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="grid gap-1 text-sm font-medium text-stone-700">
+                      Priority
+                      <input
+                        type="number"
+                        value={form.priority}
+                        onChange={(event) =>
+                          updateForm("priority", event.target.value)
+                        }
+                        className="rounded-md border border-stone-300 px-3 py-2 font-normal"
+                      />
+                    </label>
+                    <label className="mt-6 flex items-center gap-2 text-sm font-medium text-stone-700">
+                      <input
+                        type="checkbox"
+                        checked={form.is_active}
+                        onChange={(event) =>
+                          updateForm("is_active", event.target.checked)
+                        }
+                        className="h-4 w-4 rounded border-stone-300"
+                      />
+                      啟用
+                    </label>
+                  </div>
+                </fieldset>
               </div>
 
               <button
@@ -523,10 +659,31 @@ export function AdminAdManagerPanel({
             </form>
 
             <div className="rounded-lg border border-stone-200 bg-white">
-              <div className="border-b border-stone-100 bg-stone-50 px-4 py-3">
+              <div className="grid gap-3 border-b border-stone-100 bg-stone-50 px-4 py-3">
                 <p className="text-sm font-medium text-stone-700">
-                  共 {ads.length} 筆 sponsored_posts
+                  共 {filteredAds.length} / {ads.length} 筆 sponsored_posts
                 </p>
+                <div className="grid gap-2 sm:grid-cols-[1fr_160px]">
+                  <input
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    className="rounded-md border border-stone-300 px-3 py-2 text-sm"
+                    placeholder="搜尋 brand / title / city / district / category"
+                  />
+                  <select
+                    value={statusFilter}
+                    onChange={(event) =>
+                      setStatusFilter(event.target.value as StatusFilter)
+                    }
+                    className="rounded-md border border-stone-300 px-3 py-2 text-sm"
+                  >
+                    <option value="all">全部狀態</option>
+                    <option value="active">投放中</option>
+                    <option value="scheduled">尚未開始</option>
+                    <option value="ended">已結束</option>
+                    <option value="disabled">停用</option>
+                  </select>
+                </div>
               </div>
 
               {isLoading ? (
@@ -548,74 +705,81 @@ export function AdminAdManagerPanel({
                 </div>
               ) : null}
 
-              {!isLoading && !error && ads.length === 0 ? (
+              {!isLoading && !error && filteredAds.length === 0 ? (
                 <div className="px-4 py-8 text-center text-sm text-stone-500">
-                  目前沒有廣告資料
+                  目前沒有符合條件的廣告資料
                 </div>
               ) : null}
 
-              {!isLoading && !error && ads.length > 0 ? (
+              {!isLoading && !error && filteredAds.length > 0 ? (
                 <ul className="divide-y divide-stone-200">
-                  {ads.map((ad) => (
-                    <li key={ad.id} className="grid gap-3 px-4 py-4">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="text-xs text-stone-500">ID {ad.id}</p>
-                          <p className="mt-1 font-semibold text-stone-950">
-                            {ad.brand_name}
-                          </p>
-                          <p className="mt-1 text-sm text-stone-700">{ad.title}</p>
+                  {filteredAds.map((ad) => {
+                    const status = getSponsoredPostStatus(ad);
+
+                    return (
+                      <li key={ad.id} className="grid gap-3 px-4 py-4">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-xs text-stone-500">ID {ad.id}</p>
+                            <p className="mt-1 font-semibold text-stone-950">
+                              {ad.brand_name}
+                            </p>
+                            <p className="mt-1 text-sm text-stone-700">
+                              {ad.title}
+                            </p>
+                          </div>
+                          <span
+                            className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(status)}`}
+                          >
+                            {getSponsoredPostStatusLabel(status)}
+                          </span>
                         </div>
-                        <span
-                          className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${
-                            ad.is_active
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-stone-100 text-stone-600"
-                          }`}
-                        >
-                          {ad.is_active ? "啟用" : "停用"}
-                        </span>
-                      </div>
 
-                      <div className="grid gap-1 text-xs text-stone-500 sm:grid-cols-2">
-                        <span>版位: {ad.placement || "feed"}</span>
-                        <span>Priority: {ad.priority}</span>
-                        <span>
-                          條件: {[ad.city, ad.district, ad.category]
-                            .filter(Boolean)
-                            .join(" / ") || "不限"}
-                        </span>
-                        <span>開始: {formatDateTime(ad.starts_at)}</span>
-                        <span>結束: {formatDateTime(ad.ends_at)}</span>
-                      </div>
+                        <div className="grid gap-1 text-xs text-stone-500 sm:grid-cols-2">
+                          <span>版位: {ad.placement || "feed"}</span>
+                          <span>Priority: {ad.priority}</span>
+                          <span>
+                            條件: {[ad.city, ad.district, ad.category]
+                              .filter(Boolean)
+                              .join(" / ") || "不限"}
+                          </span>
+                          <span>素材: {ad.image_url ? "有 image_url" : "預設圖"}</span>
+                          <span>
+                            連結: {ad.target_url ? "有 target_url" : "無 CTA"}
+                          </span>
+                          <span>開始: {formatDateTime(ad.starts_at)}</span>
+                          <span>結束: {formatDateTime(ad.ends_at)}</span>
+                        </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleEdit(ad)}
-                          className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
-                        >
-                          編輯
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleToggle(ad)}
-                          disabled={actionAdId === ad.id}
-                          className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:text-stone-400"
-                        >
-                          {ad.is_active ? "停用" : "啟用"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleDelete(ad)}
-                          disabled={actionAdId === ad.id}
-                          className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300"
-                        >
-                          刪除
-                        </button>
-                      </div>
-                    </li>
-                  ))}
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(ad)}
+                            disabled={actionAdId === ad.id || isSubmitting}
+                            className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:text-stone-400"
+                          >
+                            編輯
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleToggle(ad)}
+                            disabled={actionAdId === ad.id}
+                            className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:text-stone-400"
+                          >
+                            {ad.is_active ? "停用此廣告" : "啟用此廣告"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDelete(ad)}
+                            disabled={actionAdId === ad.id}
+                            className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300"
+                          >
+                            刪除
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : null}
             </div>
