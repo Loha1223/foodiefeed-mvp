@@ -52,6 +52,10 @@ supabase/migrations/20260429042000_allow_public_delete_foodie_post_images.sql
 supabase/migrations/20260429043000_add_user_id_to_posts_and_comments.sql
 ```
 
+```txt
+supabase/migrations/20260429044000_enforce_ownership_rls.sql
+```
+
 可選：加入測試資料：
 
 ```txt
@@ -82,8 +86,41 @@ http://localhost:3001
 - `posts.user_id` 會記錄發文者。
 - `comments.user_id` 會記錄留言者。
 - Storage 上傳路徑會使用 `posts/{user.id}/{timestamp}-{random}.{ext}`。
-- RLS 仍是 MVP public policy。
-- 正式 ownership-based RLS 會在下一階段處理。
+- RLS 已收斂為 ownership-based policy。
+
+### 正式 RLS
+
+目前資料庫安全規則：
+
+- 未登入者可瀏覽未過期 posts。
+- 未登入者可讀取 comments。
+- 未登入者不可新增、修改、刪除 posts 或 comments。
+- 登入者可新增自己的 posts，`posts.user_id` 必須等於 `auth.uid()`。
+- 作者可修改 / 刪除自己的 posts。
+- 一般使用者不能刪除別人的 posts。
+- 登入者可新增自己的 comments，`comments.user_id` 必須等於 `auth.uid()`。
+- 留言作者可修改 / 刪除自己的 comments。
+- admin 可修改 / 刪除所有 posts，並可刪除所有 comments。
+- likes 使用 `increment_post_likes` RPC，仍允許匿名與登入者執行。
+
+既有 `user_id is null` 的 posts / comments：
+
+- 仍可被公開讀取。
+- 不會被一般登入使用者視為自己的內容。
+- 不能由一般使用者刪除。
+- 若需要清理，請使用 admin 帳號或 SQL 手動處理。
+
+### Admin Role
+
+已建立 `public.profiles` 作為 admin role 基礎：
+
+```sql
+insert into public.profiles (id, role)
+values ('使用者 auth.users.id', 'admin')
+on conflict (id) do update set role = 'admin';
+```
+
+目前尚未完成前端 admin 管理後台權限 UI；下一階段會補。
 
 ### Supabase Storage
 
@@ -93,14 +130,14 @@ http://localhost:3001
 foodie-post-images
 ```
 
-MVP 測試設定：
+正式 policy 設定：
 
 - public bucket
 - public read
-- public upload
-- public delete for `posts/` images
+- authenticated upload to `posts/{auth.uid()}/...`
+- authenticated delete only from `posts/{auth.uid()}/...`
 
-可使用 migration 建立 bucket 與 MVP policy：
+可使用 migration 建立 bucket 與 policy：
 
 ```txt
 supabase/migrations/20260429041000_create_foodie_post_images_bucket.sql
@@ -110,14 +147,17 @@ supabase/migrations/20260429041000_create_foodie_post_images_bucket.sql
 supabase/migrations/20260429042000_allow_public_delete_foodie_post_images.sql
 ```
 
+```txt
+supabase/migrations/20260429044000_enforce_ownership_rls.sql
+```
+
 也可以在 Supabase Dashboard 手動建立：
 
 1. 到 Storage 建立 bucket：`foodie-post-images`
 2. 設定為 public bucket
-3. 加入 MVP 測試用 public read / public insert policy
-4. 若要刪除情報時同步清理圖片，也加入限制 `posts/` 路徑的 public delete policy
-
-正式上線前應改成登入後才能 upload，限制使用者只能寫入自己的路徑，並在後端或 policy 搭配檔案大小與 MIME type 檢查。
+3. 加入 public read policy
+4. 加入 authenticated upload policy，限制 `posts/{auth.uid()}/...`
+5. 加入 authenticated delete policy，限制 `posts/{auth.uid()}/...`
 
 刪除情報時：
 
@@ -126,11 +166,11 @@ supabase/migrations/20260429042000_allow_public_delete_foodie_post_images.sql
 - 如果圖片是上傳到 `foodie-post-images` 的 Storage 圖片，且 object path 以 `posts/` 開頭，會嘗試同步刪除該 Storage object。
 - 外部圖片 URL 與 `/placeholder-food.jpg` 不會刪除。
 - 如果 Storage cleanup 失敗，post 刪除仍視為成功，但會在 `console.warn` 顯示錯誤。
-- 正式上線後 Storage delete policy 應改成 ownership-based。
+- 若使用者不是圖片路徑 owner，Storage delete 會被 policy 擋下。
 
-### MVP RLS 安全提醒
+### RLS 注意事項
 
-目前 RLS policy 允許 public insert/update/delete，僅適合 MVP 測試。正式上線前應改成登入會員與 ownership policy，避免匿名使用者任意修改或刪除資料。
+舊的 MVP public write / update / delete policy 已被正式 ownership-based RLS 取代。前端仍會顯示部分操作入口，但資料庫會以 RLS / Storage policy 作為最終安全邊界。
 
 ### 手動 smoke test checklist
 
@@ -143,20 +183,23 @@ npm run dev
 2. 開啟首頁，確認可讀取 Supabase posts。
 3. 未登入時嘗試發文，確認顯示「請先登入後再發佈情報」。
 4. 未登入時開啟詳情並送出留言，確認顯示「請先登入後再留言」。
-5. 使用 Navbar Email 表單寄送 magic link 並登入。
-6. 登入後 Navbar 顯示 user email。
-7. 新增一筆情報。
-8. 選擇本機圖片並送出，確認圖片顯示，Storage path 為 `posts/{user.id}/...`。
-9. 重新整理頁面，確認圖片仍顯示。
-10. 也測試只填圖片 URL，確認 URL 圖片仍可使用。
-11. 對該情報按讚，確認 likes 更新。
-12. 開啟詳情 modal。
-13. 新增留言，確認留言列表立即更新，且 `comments.user_id` 有寫入。
-14. 回到首頁，確認 PostCard 留言數 +1。
-15. 重新整理頁面，確認留言數仍依 comments table 正確計算。
-16. 登出後確認不能再發文、留言、上傳圖片。
-17. 開啟管理後台，刪除剛新增的情報。
-18. 若該情報使用上傳圖片，確認 Storage 中對應 `posts/` object 已被清理。
+5. 未登入時確認不能直接 upload / delete Storage object。
+6. 使用 Navbar Email 表單寄送 magic link 並登入。
+7. 登入後 Navbar 顯示 user email。
+8. 新增一筆情報，確認 `posts.user_id = auth.uid()`。
+9. 選擇本機圖片並送出，確認圖片顯示，Storage path 為 `posts/{auth.uid()}/...`。
+10. 重新整理頁面，確認圖片仍顯示。
+11. 也測試只填圖片 URL，確認 URL 圖片仍可使用。
+12. 對該情報按讚，確認 likes 更新。
+13. 開啟詳情 modal。
+14. 新增留言，確認留言列表立即更新，且 `comments.user_id = auth.uid()`。
+15. 回到首頁，確認 PostCard 留言數 +1。
+16. 重新整理頁面，確認留言數仍依 comments table 正確計算。
+17. 使用另一個帳號登入，確認不能刪除第一個帳號建立的 post。
+18. 確認另一個帳號不能 delete `posts/{第一個帳號 id}/...` 的 Storage object。
+19. 登出後確認不能再發文、留言、上傳圖片。
+20. 回到原作者帳號，開啟管理後台，刪除自己新增的情報。
+21. 若該情報使用上傳圖片，確認 Storage 中對應 `posts/{auth.uid()}/...` object 已被清理。
 
 ## 驗證指令
 

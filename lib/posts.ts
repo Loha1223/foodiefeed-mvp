@@ -163,7 +163,12 @@ export async function incrementPostLike(post: Post): Promise<Post> {
 export async function deletePost(post: Post): Promise<void> {
   const supabase = getClientOrThrow();
 
-  const { error } = await supabase.from("posts").delete().eq("id", post.id);
+  const { error } = await supabase
+    .from("posts")
+    .delete()
+    .eq("id", post.id)
+    .select("id")
+    .single();
 
   if (error) {
     throw new Error(error.message);
