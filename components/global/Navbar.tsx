@@ -1,16 +1,27 @@
 "use client";
 
+import type { User } from "@supabase/supabase-js";
 import { AuthButton } from "@/components/global/AuthButton";
 
 type NavbarProps = {
-  isAdminOpen: boolean;
-  onToggleAdmin: () => void;
+  isMyPostsOpen: boolean;
+  isAdminPanelOpen: boolean;
+  currentUser: User | null;
+  isAdmin: boolean;
+  isAuthLoading: boolean;
+  onToggleMyPosts: () => void;
+  onToggleAdminPanel: () => void;
   onOpenPostModal: () => void;
 };
 
 export function Navbar({
-  isAdminOpen,
-  onToggleAdmin,
+  isMyPostsOpen,
+  isAdminPanelOpen,
+  currentUser,
+  isAdmin,
+  isAuthLoading,
+  onToggleMyPosts,
+  onToggleAdminPanel,
   onOpenPostModal,
 }: NavbarProps) {
   return (
@@ -24,14 +35,23 @@ export function Navbar({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <AuthButton />
+          <AuthButton user={currentUser} isLoading={isAuthLoading} />
           <button
             type="button"
-            onClick={onToggleAdmin}
+            onClick={onToggleMyPosts}
             className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-stone-500 hover:bg-stone-50"
           >
-            {isAdminOpen ? "關閉後台" : "管理後台"}
+            {isMyPostsOpen ? "關閉投稿" : "我的投稿"}
           </button>
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={onToggleAdminPanel}
+              className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-stone-500 hover:bg-stone-50"
+            >
+              {isAdminPanelOpen ? "關閉管理" : "Admin 管理"}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={onOpenPostModal}

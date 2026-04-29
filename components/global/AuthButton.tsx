@@ -1,56 +1,19 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import type { User } from "@supabase/supabase-js";
-import {
-  getCurrentUser,
-  onAuthStateChange,
-  signInWithEmail,
-  signOut,
-} from "@/lib/auth";
+import { signInWithEmail, signOut } from "@/lib/auth";
 
-export function AuthButton() {
-  const [user, setUser] = useState<User | null>(null);
+type AuthButtonProps = {
+  user: User | null;
+  isLoading: boolean;
+};
+
+export function AuthButton({ user, isLoading }: AuthButtonProps) {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadUser() {
-      try {
-        const currentUser = await getCurrentUser();
-
-        if (isMounted) {
-          setUser(currentUser);
-        }
-      } catch (error) {
-        if (isMounted) {
-          setErrorMessage(
-            error instanceof Error ? error.message : "無法取得登入狀態",
-          );
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    const subscription = onAuthStateChange((nextUser) => {
-      setUser(nextUser);
-      setIsLoading(false);
-    });
-
-    void loadUser();
-
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSignIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -62,7 +25,7 @@ export function AuthButton() {
 
     setErrorMessage("");
     setMessage("");
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     try {
       await signInWithEmail(email);
@@ -72,23 +35,22 @@ export function AuthButton() {
         error instanceof Error ? error.message : "登入連結寄送失敗",
       );
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   }
 
   async function handleSignOut() {
     setErrorMessage("");
     setMessage("");
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     try {
       await signOut();
-      setUser(null);
       setEmail("");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "登出失敗");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   }
 
@@ -102,7 +64,7 @@ export function AuthButton() {
           <button
             type="button"
             onClick={handleSignOut}
-            disabled={isLoading}
+            disabled={isSubmitting}
             className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:text-stone-400"
           >
             登出
@@ -132,10 +94,10 @@ export function AuthButton() {
         />
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || isSubmitting}
           className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:text-stone-400"
         >
-          {isLoading ? "處理中" : "寄送登入連結"}
+          {isLoading || isSubmitting ? "處理中" : "寄送登入連結"}
         </button>
       </div>
       {message ? <p className="max-w-72 text-xs text-green-700">{message}</p> : null}

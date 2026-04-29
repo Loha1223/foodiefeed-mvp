@@ -120,7 +120,20 @@ values ('使用者 auth.users.id', 'admin')
 on conflict (id) do update set role = 'admin';
 ```
 
-目前尚未完成前端 admin 管理後台權限 UI；下一階段會補。
+Admin 使用者登入後，Navbar 會顯示「Admin 管理」入口。
+
+### 投稿管理 UI
+
+Navbar 的「我的投稿」會開啟「我的情報管理」區塊：
+
+- 未登入時只顯示「請先登入後管理自己的投稿」。
+- 登入後只列出 `post.user_id === currentUser.id` 的投稿。
+- 一般使用者在 UI 中看不到別人的刪除按鈕。
+- `profiles.role = 'admin'` 的使用者會額外看到「Admin 管理」。
+- Admin 管理會顯示目前前端已載入的 posts，並提供刪除入口。
+- Admin 刪除他人 post 的 DB delete 由 RLS admin policy 允許；Storage cleanup 若被 owner path policy 擋下，會 `console.warn`，不會 rollback DB delete。
+- 真正安全仍由 Supabase RLS ownership policy 保護。
+- 完整 server-side admin 後台與跨範圍 Storage cleanup 可在下一階段補齊。
 
 ### Supabase Storage
 
@@ -195,11 +208,17 @@ npm run dev
 14. 新增留言，確認留言列表立即更新，且 `comments.user_id = auth.uid()`。
 15. 回到首頁，確認 PostCard 留言數 +1。
 16. 重新整理頁面，確認留言數仍依 comments table 正確計算。
-17. 使用另一個帳號登入，確認不能刪除第一個帳號建立的 post。
-18. 確認另一個帳號不能 delete `posts/{第一個帳號 id}/...` 的 Storage object。
-19. 登出後確認不能再發文、留言、上傳圖片。
-20. 回到原作者帳號，開啟管理後台，刪除自己新增的情報。
-21. 若該情報使用上傳圖片，確認 Storage 中對應 `posts/{auth.uid()}/...` object 已被清理。
+17. 點擊「我的投稿」，確認只看到自己的 posts。
+18. 使用另一個帳號登入，確認「我的投稿」不顯示第一個帳號建立的 post。
+19. 一般使用者確認看不到「Admin 管理」入口。
+20. 使用另一個帳號確認不能刪除第一個帳號建立的 post。
+21. 確認另一個帳號不能 delete `posts/{第一個帳號 id}/...` 的 Storage object。
+22. 手動將測試帳號設為 admin，重新登入後確認 Navbar 顯示「Admin 管理」。
+23. 點擊「Admin 管理」，確認可看到目前前端已載入的 posts 與 owner metadata。
+24. Admin 測試刪除任一 post，確認 DB delete 成功；若 Storage cleanup 被 policy 擋下，console 會顯示 warning。
+25. 登出後確認不能再發文、留言、上傳圖片。
+26. 回到原作者帳號，開啟「我的投稿」，刪除自己新增的情報。
+27. 若該情報使用上傳圖片，確認 Storage 中對應 `posts/{auth.uid()}/...` object 已被清理。
 
 ## 驗證指令
 

@@ -7,6 +7,7 @@ import { MasonryGrid } from "@/components/feed/MasonryGrid";
 import { Navbar } from "@/components/global/Navbar";
 import { DetailModal } from "@/components/modals/DetailModal";
 import { PostModal } from "@/components/modals/PostModal";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   createPost,
   deletePost,
@@ -97,7 +98,9 @@ export default function Home() {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isMyPostsOpen, setIsMyPostsOpen] = useState(false);
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const { currentUser, isAdmin, isAuthLoading, authError } = useCurrentUser();
 
   useEffect(() => {
     async function loadPosts() {
@@ -196,13 +199,42 @@ export default function Home() {
   return (
     <main className="min-h-screen">
       <Navbar
-        isAdminOpen={isAdminOpen}
-        onToggleAdmin={() => setIsAdminOpen((isOpen) => !isOpen)}
+        isMyPostsOpen={isMyPostsOpen}
+        isAdminPanelOpen={isAdminPanelOpen}
+        currentUser={currentUser}
+        isAdmin={isAdmin}
+        isAuthLoading={isAuthLoading}
+        onToggleMyPosts={() => {
+          setIsMyPostsOpen((isOpen) => !isOpen);
+          setIsAdminPanelOpen(false);
+        }}
+        onToggleAdminPanel={() => {
+          setIsAdminPanelOpen((isOpen) => !isOpen);
+          setIsMyPostsOpen(false);
+        }}
         onOpenPostModal={handleOpenPostModal}
       />
+      {authError ? (
+        <div className="mx-auto max-w-6xl px-4 pt-4 text-sm text-red-700 sm:px-6">
+          {authError}
+        </div>
+      ) : null}
       <AdminPanel
-        isOpen={isAdminOpen}
+        mode="mine"
+        isOpen={isMyPostsOpen}
         posts={posts}
+        currentUser={currentUser}
+        isAdmin={isAdmin}
+        isAuthLoading={isAuthLoading}
+        onDeletePost={handleDeletePost}
+      />
+      <AdminPanel
+        mode="admin"
+        isOpen={isAdminPanelOpen}
+        posts={posts}
+        currentUser={currentUser}
+        isAdmin={isAdmin}
+        isAuthLoading={isAuthLoading}
         onDeletePost={handleDeletePost}
       />
       <FilterBar totalCount={posts.length} />
