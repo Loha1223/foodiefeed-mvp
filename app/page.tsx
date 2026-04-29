@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AdminAdStatsPanel } from "@/components/admin/AdminAdStatsPanel";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { FilterBar } from "@/components/feed/FilterBar";
 import { MasonryGrid } from "@/components/feed/MasonryGrid";
@@ -152,6 +153,7 @@ function HomeContent() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [isMyPostsOpen, setIsMyPostsOpen] = useState(false);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const [isAdStatsOpen, setIsAdStatsOpen] = useState(false);
   const [isMyPostsLoading, setIsMyPostsLoading] = useState(false);
   const [isAdminPostsLoading, setIsAdminPostsLoading] = useState(false);
   const [myPostsError, setMyPostsError] = useState<string | null>(null);
@@ -243,6 +245,7 @@ function HomeContent() {
       setAdminPostsError(null);
       setIsMyPostsOpen(false);
       setIsAdminPanelOpen(false);
+      setIsAdStatsOpen(false);
       return;
     }
 
@@ -250,6 +253,7 @@ function HomeContent() {
       setAdminPosts([]);
       setAdminPostsError(null);
       setIsAdminPanelOpen(false);
+      setIsAdStatsOpen(false);
     }
   }, [currentUser, isAdmin]);
 
@@ -488,6 +492,7 @@ function HomeContent() {
     const shouldOpen = !isMyPostsOpen;
     setIsMyPostsOpen(shouldOpen);
     setIsAdminPanelOpen(false);
+    setIsAdStatsOpen(false);
 
     if (shouldOpen) {
       void loadMyPosts();
@@ -498,10 +503,18 @@ function HomeContent() {
     const shouldOpen = !isAdminPanelOpen;
     setIsAdminPanelOpen(shouldOpen);
     setIsMyPostsOpen(false);
+    setIsAdStatsOpen(false);
 
     if (shouldOpen) {
       void loadAdminPosts();
     }
+  }
+
+  function handleToggleAdStats() {
+    const shouldOpen = !isAdStatsOpen;
+    setIsAdStatsOpen(shouldOpen);
+    setIsMyPostsOpen(false);
+    setIsAdminPanelOpen(false);
   }
 
   function handleResetFeedFilter() {
@@ -523,11 +536,13 @@ function HomeContent() {
       <Navbar
         isMyPostsOpen={isMyPostsOpen}
         isAdminPanelOpen={isAdminPanelOpen}
+        isAdStatsOpen={isAdStatsOpen}
         currentUser={currentUser}
         isAdmin={isAdmin}
         isAuthLoading={isAuthLoading}
         onToggleMyPosts={handleToggleMyPosts}
         onToggleAdminPanel={handleToggleAdminPanel}
+        onToggleAdStats={handleToggleAdStats}
         onOpenPostModal={handleOpenPostModal}
       />
       {authError ? (
@@ -558,6 +573,11 @@ function HomeContent() {
         error={adminPostsError}
         onDeletePost={handleDeletePost}
         onRefresh={() => void loadAdminPosts()}
+      />
+      <AdminAdStatsPanel
+        isOpen={isAdStatsOpen}
+        isAdmin={isAdmin}
+        onClose={() => setIsAdStatsOpen(false)}
       />
       <FilterBar
         filter={feedFilter}

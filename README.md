@@ -257,6 +257,32 @@ order by sp.id desc;
 
 本階段仍不做付款、完整廣告後台、曝光去重、點擊防灌或正式報表。
 
+### Admin 廣告成效檢視 MVP
+
+`profiles.role = 'admin'` 的使用者登入後，Navbar 會顯示「廣告成效」入口。一般使用者不會看到此入口；資料讀取仍由 Supabase RLS 保護。
+
+廣告成效面板會顯示：
+
+- 廣告 ID
+- 品牌名稱
+- 廣告標題
+- 版位
+- 狀態：投放中 / 尚未開始 / 已結束 / 停用
+- 投放期間
+- 曝光數
+- 點擊數
+- CTR %
+
+目前成效查詢由前端分別讀取 `sponsored_posts`、`ad_impressions`、`ad_clicks` 後聚合，適合作為 MVP。追蹤資料目前只聚合最近 5000 筆 impressions 與最近 5000 筆 clicks。資料量變大後，建議改成 RPC、materialized view、pagination 或後台報表服務。
+
+本階段限制：
+
+- 不做圖表。
+- 不做廣告新增 / 編輯 / 刪除後台。
+- 不做付款。
+- 不做報表匯出。
+- 不做正式 BI 分析。
+
 ### Supabase Storage
 
 圖片上傳使用 bucket：
@@ -349,6 +375,10 @@ npm run dev
 33. 廣告卡進入畫面後，確認 `ad_impressions` 新增資料。
 34. 點擊「查看活動」後，確認 `ad_clicks` 新增資料。
 35. 確認一般 public user 無法讀取 `ad_impressions` / `ad_clicks`，admin 才能查看。
+36. 使用一般帳號登入，確認 Navbar 不顯示「廣告成效」。
+37. 使用 admin 帳號登入，確認 Navbar 顯示「廣告成效」。
+38. 點擊「廣告成效」，確認可看到 sponsored posts 的曝光、點擊與 CTR。
+39. 若沒有 sponsored posts，確認顯示「目前沒有廣告資料」。
 
 ## 驗證指令
 

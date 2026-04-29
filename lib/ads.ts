@@ -1,8 +1,9 @@
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/auth";
-import type { SponsoredPost } from "@/types/foodie";
+import type { SponsoredAdStats, SponsoredPost } from "@/types/foodie";
 
 const AD_SESSION_STORAGE_KEY = "foodiefeed_ad_session_id";
+const AD_STATS_TRACKING_LIMIT = 5000;
 
 type SponsoredPostRow = {
   id: number;
@@ -20,6 +21,20 @@ type SponsoredPostRow = {
   ends_at: string;
   is_active: boolean | null;
   priority: number | null;
+};
+
+type SponsoredAdStatsPostRow = {
+  id: number;
+  title: string;
+  brand_name: string;
+  placement: string | null;
+  starts_at: string | null;
+  ends_at: string;
+  is_active: boolean | null;
+};
+
+type AdTrackingAdIdRow = {
+  ad_id: number | null;
 };
 
 type SponsoredPostFilters = {
@@ -204,4 +219,85 @@ export async function trackAdClick(input: TrackAdClickInput): Promise<void> {
   if (error) {
     console.warn(`Failed to track ad click: ${error.message}`);
   }
+}
+
+function countTrackingRows(rows: AdTrackingAdIdRow[]): Record<number, number> {
+  return rows.reduce<Record<number, number>>((counts, row) => {
+    if (row.ad_id === null) {
+      return counts;
+    }
+
+    counts[row.ad_id] = (counts[row.ad_id] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
+export async function fetchSponsoredAdStats(): Promise<SponsoredAdStats[]> {
+  const supabase = getSupabaseClient();
+
+  if (!supabase) {
+    throw new Error("Supabase env is not configured");
+  }
+
+  const { data: sponsoredPostsData, error: sponsoredPostsError } =
+    await supabase
+      .from("sponsored_posts")
+      .select("id,title,brand_name,placement,starts_at,ends_at,is_active")
+      .order("created_at", { ascending: false });
+
+  if (sponsoredPostsError) {
+    throw new Error(sponsoredPostsError.message);
+  }
+
+  const sponsoredPosts = (sponsoredPostsData ??
+    []) as SponsoredAdStatsPostRow[];
+
+  if (sponsoredPosts.length === 0) {
+    return [];
+  }
+
+  const { data: impressionsData, error: impressionsError } = await supabase
+    .from("ad_impressions")
+    .select("ad_id")
+    .order("created_at", { ascending: false })
+    .limit(AD_STATS_TRACKING_LIMIT);
+
+  if (impressionsError) {
+    throw new Error(impressionsError.message);
+  }
+
+  const { data: clicksData, error: clicksError } = await supabase
+    .from("ad_clicks")
+    .select("ad_id")
+    .order("created_at", { ascending: false })
+    .limit(AD_STATS_TRACKING_LIMIT);
+
+  if (clicksError) {
+    throw new Error(clicksError.message);
+  }
+
+  const impressionCounts = countTrackingRows(
+    (impressionsData ?? []) as AdTrackingAdIdRow[],
+  );
+  const clickCounts = countTrackingRows((clicksData ?? []) as AdTrackingAdIdRow[]);
+
+  return sponsoredPosts.map((post) => {
+    const impressions = impressionCounts[post.id] ?? 0;
+    const clicks = clickCounts[post.id] ?? 0;
+    const ctrPercent =
+      impressions === 0 ? 0 : Number(((clicks / impressions) * 100).toFixed(2));
+
+    return {
+      id: post.id,
+      title: post.title,
+      brand_name: post.brand_name,
+      placement: post.placement,
+      is_active: post.is_active ?? false,
+      starts_at: post.starts_at,
+      ends_at: post.ends_at,
+      impressions,
+      clicks,
+      ctr_percent: ctrPercent,
+    };
+  });
 }

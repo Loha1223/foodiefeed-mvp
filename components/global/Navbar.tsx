@@ -7,22 +7,26 @@ import { AuthButton } from "@/components/global/AuthButton";
 type NavbarProps = {
   isMyPostsOpen: boolean;
   isAdminPanelOpen: boolean;
+  isAdStatsOpen: boolean;
   currentUser: User | null;
   isAdmin: boolean;
   isAuthLoading: boolean;
   onToggleMyPosts: () => void;
   onToggleAdminPanel: () => void;
+  onToggleAdStats: () => void;
   onOpenPostModal: () => void;
 };
 
 export function Navbar({
   isMyPostsOpen,
   isAdminPanelOpen,
+  isAdStatsOpen,
   currentUser,
   isAdmin,
   isAuthLoading,
   onToggleMyPosts,
   onToggleAdminPanel,
+  onToggleAdStats,
   onOpenPostModal,
 }: NavbarProps) {
   const [isMobileActionsOpen, setIsMobileActionsOpen] = useState(false);
@@ -34,6 +38,11 @@ export function Navbar({
 
   function handleToggleAdminPanel() {
     onToggleAdminPanel();
+    setIsMobileActionsOpen(false);
+  }
+
+  function handleToggleAdStats() {
+    onToggleAdStats();
     setIsMobileActionsOpen(false);
   }
 
@@ -81,13 +90,22 @@ export function Navbar({
             {isMyPostsOpen ? "關閉投稿" : "我的投稿"}
           </button>
           {isAdmin ? (
-            <button
-              type="button"
-              onClick={handleToggleAdminPanel}
-              className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-stone-500 hover:bg-stone-50"
-            >
-              {isAdminPanelOpen ? "關閉管理" : "Admin 管理"}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleToggleAdminPanel}
+                className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-stone-500 hover:bg-stone-50"
+              >
+                {isAdminPanelOpen ? "關閉管理" : "Admin 管理"}
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleAdStats}
+                className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-stone-500 hover:bg-stone-50"
+              >
+                {isAdStatsOpen ? "關閉成效" : "廣告成效"}
+              </button>
+            </>
           ) : null}
           <button
             type="button"

@@ -72,3 +72,16 @@ export type SponsoredPost = {
   is_active: boolean;
   priority: number;
 };
+
+export type SponsoredAdStats = {
+  id: number;
+  title: string;
+  brand_name: string;
+  placement: string | null;
+  is_active: boolean;
+  starts_at: string | null;
+  ends_at: string;
+  impressions: number;
+  clicks: number;
+  ctr_percent: number;
+};
