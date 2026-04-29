@@ -9,6 +9,11 @@ import type {
 
 const AD_SESSION_STORAGE_KEY = "foodiefeed_ad_session_id";
 const AD_STATS_TRACKING_LIMIT = 5000;
+const MAX_TRACKING_PAGE_PATH_LENGTH = 300;
+const MAX_TRACKING_TARGET_URL_LENGTH = 500;
+const MAX_TRACKING_SESSION_ID_LENGTH = 120;
+const MAX_TRACKING_METADATA_LENGTH = 1000;
+const ALLOWED_TRACKING_PLACEMENTS = new Set(["feed", "hero", "detail"]);
 
 export type SponsoredPostStatus =
   | "active"
@@ -44,8 +49,11 @@ type SponsoredAdStatsPostRow = {
   is_active: boolean | null;
 };
 
-type AdTrackingAdIdRow = {
+type AdTrackingRow = {
+  id: number;
   ad_id: number | null;
+  session_id: string | null;
+  created_at: string;
 };
 
 type SponsoredPostFilters = {
@@ -272,6 +280,57 @@ function buildNullOrEqualsFilter(column: string, value?: string) {
   return `${column}.is.null,${column}.eq.${trimmedValue}`;
 }
 
+function truncateTrackingText(value: string | undefined, maxLength: number) {
+  const trimmedValue = value?.trim();
+
+  if (!trimmedValue) {
+    return undefined;
+  }
+
+  return trimmedValue.slice(0, maxLength);
+}
+
+function normalizeTrackingPlacement(placement: string | undefined) {
+  const normalizedPlacement = placement?.trim() || "feed";
+  return ALLOWED_TRACKING_PLACEMENTS.has(normalizedPlacement)
+    ? normalizedPlacement
+    : "feed";
+}
+
+function sanitizeTrackingMetadata(metadata: Record<string, unknown> | undefined) {
+  if (!metadata) {
+    return {};
+  }
+
+  try {
+    const serializedMetadata = JSON.stringify(metadata);
+
+    if (serializedMetadata.length <= MAX_TRACKING_METADATA_LENGTH) {
+      return metadata;
+    }
+  } catch {
+    return {};
+  }
+
+  return { truncated: true };
+}
+
+function buildTrackingPayload(input: TrackAdImpressionInput) {
+  return {
+    ad_id: input.adId,
+    placement: normalizeTrackingPlacement(input.placement),
+    page_path: truncateTrackingText(
+      input.pagePath,
+      MAX_TRACKING_PAGE_PATH_LENGTH,
+    ),
+    session_id: truncateTrackingText(
+      input.sessionId,
+      MAX_TRACKING_SESSION_ID_LENGTH,
+    ),
+    metadata: sanitizeTrackingMetadata(input.metadata),
+  };
+}
+
 export async function fetchActiveSponsoredPosts(
   filters: SponsoredPostFilters = {},
 ): Promise<SponsoredPost[]> {
@@ -448,12 +507,12 @@ export function getOrCreateAdSessionId(): string | undefined {
     );
 
     if (existingSessionId) {
-      return existingSessionId;
+      return existingSessionId.slice(0, MAX_TRACKING_SESSION_ID_LENGTH);
     }
 
     const sessionId = `ad_${Date.now()}_${Math.random()
       .toString(36)
-      .slice(2)}`;
+      .slice(2)}`.slice(0, MAX_TRACKING_SESSION_ID_LENGTH);
     window.localStorage.setItem(AD_SESSION_STORAGE_KEY, sessionId);
     return sessionId;
   } catch (error) {
@@ -477,13 +536,10 @@ export async function trackAdImpression(
   }
 
   const userId = await getTrackingUserId();
+  const trackingPayload = buildTrackingPayload(input);
   const { error } = await supabase.from("ad_impressions").insert({
-    ad_id: input.adId,
-    placement: input.placement ?? "feed",
-    page_path: input.pagePath,
+    ...trackingPayload,
     user_id: userId,
-    session_id: input.sessionId,
-    metadata: input.metadata ?? {},
   });
 
   if (error) {
@@ -500,14 +556,14 @@ export async function trackAdClick(input: TrackAdClickInput): Promise<void> {
   }
 
   const userId = await getTrackingUserId();
+  const trackingPayload = buildTrackingPayload(input);
   const { error } = await supabase.from("ad_clicks").insert({
-    ad_id: input.adId,
-    placement: input.placement ?? "feed",
-    page_path: input.pagePath,
-    target_url: input.targetUrl,
+    ...trackingPayload,
+    target_url: truncateTrackingText(
+      input.targetUrl,
+      MAX_TRACKING_TARGET_URL_LENGTH,
+    ),
     user_id: userId,
-    session_id: input.sessionId,
-    metadata: input.metadata ?? {},
   });
 
   if (error) {
@@ -515,15 +571,30 @@ export async function trackAdClick(input: TrackAdClickInput): Promise<void> {
   }
 }
 
-function countTrackingRows(rows: AdTrackingAdIdRow[]): Record<number, number> {
-  return rows.reduce<Record<number, number>>((counts, row) => {
+function countUniqueTrackingRows(rows: AdTrackingRow[]): Record<number, number> {
+  const uniqueKeysByAdId = rows.reduce<Record<number, Set<string>>>((sets, row) => {
     if (row.ad_id === null) {
-      return counts;
+      return sets;
     }
 
-    counts[row.ad_id] = (counts[row.ad_id] ?? 0) + 1;
-    return counts;
+    const trackingDate = row.created_at.slice(0, 10);
+    const sessionScope = row.session_id || `row_${row.id}`;
+    const uniqueKey = `${sessionScope}:${trackingDate}`;
+
+    if (!sets[row.ad_id]) {
+      sets[row.ad_id] = new Set<string>();
+    }
+
+    sets[row.ad_id].add(uniqueKey);
+    return sets;
   }, {});
+
+  return Object.fromEntries(
+    Object.entries(uniqueKeysByAdId).map(([adId, uniqueKeys]) => [
+      Number(adId),
+      uniqueKeys.size,
+    ]),
+  );
 }
 
 export async function fetchSponsoredAdStats(): Promise<SponsoredAdStats[]> {
@@ -552,7 +623,7 @@ export async function fetchSponsoredAdStats(): Promise<SponsoredAdStats[]> {
 
   const { data: impressionsData, error: impressionsError } = await supabase
     .from("ad_impressions")
-    .select("ad_id")
+    .select("id,ad_id,session_id,created_at")
     .order("created_at", { ascending: false })
     .limit(AD_STATS_TRACKING_LIMIT);
 
@@ -562,7 +633,7 @@ export async function fetchSponsoredAdStats(): Promise<SponsoredAdStats[]> {
 
   const { data: clicksData, error: clicksError } = await supabase
     .from("ad_clicks")
-    .select("ad_id")
+    .select("id,ad_id,session_id,created_at")
     .order("created_at", { ascending: false })
     .limit(AD_STATS_TRACKING_LIMIT);
 
@@ -570,10 +641,12 @@ export async function fetchSponsoredAdStats(): Promise<SponsoredAdStats[]> {
     throw new Error(clicksError.message);
   }
 
-  const impressionCounts = countTrackingRows(
-    (impressionsData ?? []) as AdTrackingAdIdRow[],
+  const impressionCounts = countUniqueTrackingRows(
+    (impressionsData ?? []) as AdTrackingRow[],
   );
-  const clickCounts = countTrackingRows((clicksData ?? []) as AdTrackingAdIdRow[]);
+  const clickCounts = countUniqueTrackingRows(
+    (clicksData ?? []) as AdTrackingRow[],
+  );
 
   return sponsoredPosts.map((post) => {
     const impressions = impressionCounts[post.id] ?? 0;

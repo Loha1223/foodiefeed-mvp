@@ -103,7 +103,10 @@ export function AdminAdStatsPanel({
           <div>
             <h2 className="text-xl font-bold text-stone-950">廣告成效</h2>
             <p className="mt-1 text-sm text-stone-500">
-              Sponsored Posts 的曝光、點擊與 CTR 摘要。
+              Sponsored Posts 的去重曝光、去重點擊與 CTR 摘要。
+            </p>
+            <p className="mt-1 text-xs leading-5 text-stone-500">
+              目前統計採 session + 日期去重，適合 MVP 參考，非正式廣告平台歸因。
             </p>
           </div>
           <div className="flex gap-2">
@@ -170,9 +173,9 @@ export function AdminAdStatsPanel({
                     <th className="px-4 py-3">版位</th>
                     <th className="px-4 py-3">狀態</th>
                     <th className="px-4 py-3">投放期間</th>
-                    <th className="px-4 py-3 text-right">曝光</th>
-                    <th className="px-4 py-3 text-right">點擊</th>
-                    <th className="px-4 py-3 text-right">CTR</th>
+                    <th className="px-4 py-3 text-right">去重曝光</th>
+                    <th className="px-4 py-3 text-right">去重點擊</th>
+                    <th className="px-4 py-3 text-right">去重 CTR</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-200">

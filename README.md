@@ -68,6 +68,10 @@ supabase/migrations/20260429046000_create_sponsored_posts.sql
 supabase/migrations/20260429047000_create_ad_tracking_tables.sql
 ```
 
+```txt
+supabase/migrations/20260429048000_harden_ad_tracking.sql
+```
+
 可選：加入測試資料：
 
 ```txt
@@ -221,6 +225,16 @@ ad_clicks
 - `session_id` 儲存在 browser `localStorage` 的 `foodiefeed_ad_session_id`。
 - 追蹤失敗只會 `console.warn`，不會顯示使用者錯誤，也不會阻擋廣告顯示或新分頁跳轉。
 
+防濫用 MVP：
+
+- public insert 仍保留，因為匿名訪客也要能記錄曝光 / 點擊。
+- `ad_id` 必須存在。
+- `placement` 限制為 `feed` / `hero` / `detail`，目前前端主要使用 `feed`。
+- `page_path` 最長 300 字元。
+- `target_url` 最長 500 字元，且若有值必須以 `http://` 或 `https://` 開頭。
+- `session_id` 最長 120 字元。
+- 前端送出 tracking 前會截斷過長的 `page_path` / `target_url` / `session_id`，並限制 metadata 維持小型。
+
 RLS：
 
 - public / anon / authenticated 可以 insert `ad_impressions`。
@@ -255,7 +269,7 @@ group by sp.id, sp.title
 order by sp.id desc;
 ```
 
-本階段仍不做付款、完整廣告後台、曝光去重、點擊防灌或正式報表。
+本階段仍不做付款、完整廣告後台、點擊防灌或正式報表。
 
 ### Admin 廣告成效檢視 MVP
 
@@ -273,7 +287,16 @@ order by sp.id desc;
 - 點擊數
 - CTR %
 
-目前成效查詢由前端分別讀取 `sponsored_posts`、`ad_impressions`、`ad_clicks` 後聚合，適合作為 MVP。追蹤資料目前只聚合最近 5000 筆 impressions 與最近 5000 筆 clicks。資料量變大後，建議改成 RPC、materialized view、pagination 或後台報表服務。
+目前成效查詢由前端分別讀取 `sponsored_posts`、`ad_impressions`、`ad_clicks` 後聚合，適合作為 MVP。追蹤資料目前只聚合最近 5000 筆 impressions 與最近 5000 筆 clicks。
+
+Admin 成效數字採去重估算：
+
+- impressions：以 `ad_id + session_id + created_at 日期` 去重。
+- clicks：以 `ad_id + session_id + created_at 日期` 去重。
+- `session_id is null` 的舊資料會 fallback 使用 row id，避免全部合併。
+- CTR = 去重點擊 / 去重曝光 * 100。
+
+這不是正式 anti-fraud，也不代表精準商業結算數據。資料量變大後，建議改成 server-side RPC、materialized view、pagination 或 analytics pipeline。
 
 本階段限制：
 
@@ -282,6 +305,10 @@ order by sp.id desc;
 - 不做付款。
 - 不做報表匯出。
 - 不做正式 BI 分析。
+- 仍可被進階 bot 灌水。
+- localStorage session 可被清除。
+- click tracking 不保證 100% 成功。
+- 未做 IP / user-agent / rate limit / CAPTCHA。
 
 ### Admin 廣告管理 MVP
 
@@ -445,6 +472,8 @@ npm run dev
 49. 設定 `starts_at` 晚於 `ends_at`，確認無法送出。
 50. 使用搜尋與狀態篩選，確認列表可依 brand / title / city / district / category 與投放狀態篩選。
 51. 確認 SponsoredCard 圖片載入失敗時會 fallback 到 `/placeholder-food.jpg`，且曝光 / 點擊 tracking 仍可運作。
+52. 確認過長 `page_path` / `target_url` / `session_id` 會被前端截斷，資料庫 constraint 會拒絕不符合格式的 tracking payload。
+53. 確認「廣告成效」顯示的是去重曝光、去重點擊與去重 CTR。
 
 ## 驗證指令
 
