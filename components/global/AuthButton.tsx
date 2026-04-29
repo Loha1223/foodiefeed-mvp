@@ -3,6 +3,8 @@
 import { useState, type FormEvent } from "react";
 import type { User } from "@supabase/supabase-js";
 import { signInWithEmail, signOut } from "@/lib/auth";
+import { useToast } from "@/hooks/useToast";
+import { getUserFriendlyErrorMessage } from "@/lib/errorMessages";
 
 type AuthButtonProps = {
   user: User | null;
@@ -10,8 +12,8 @@ type AuthButtonProps = {
 };
 
 export function AuthButton({ user, isLoading }: AuthButtonProps) {
+  const { showToast } = useToast();
   const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -24,16 +26,21 @@ export function AuthButton({ user, isLoading }: AuthButtonProps) {
     }
 
     setErrorMessage("");
-    setMessage("");
     setIsSubmitting(true);
 
     try {
       await signInWithEmail(email);
-      setMessage("已寄出登入連結，請檢查信箱");
+      showToast({
+        variant: "success",
+        title: "已寄送登入連結",
+        message: "請到信箱點擊 magic link 完成登入。",
+      });
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "登入連結寄送失敗",
-      );
+      showToast({
+        variant: "error",
+        title: "登入失敗",
+        message: getUserFriendlyErrorMessage(error, "登入連結寄送失敗，請稍後再試。"),
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -41,14 +48,22 @@ export function AuthButton({ user, isLoading }: AuthButtonProps) {
 
   async function handleSignOut() {
     setErrorMessage("");
-    setMessage("");
     setIsSubmitting(true);
 
     try {
       await signOut();
       setEmail("");
+      showToast({
+        variant: "success",
+        title: "已登出",
+        message: "你已成功登出。",
+      });
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "登出失敗");
+      showToast({
+        variant: "error",
+        title: "登出失敗",
+        message: getUserFriendlyErrorMessage(error, "登出失敗，請稍後再試。"),
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -100,7 +115,6 @@ export function AuthButton({ user, isLoading }: AuthButtonProps) {
           {isLoading || isSubmitting ? "處理中" : "寄送登入連結"}
         </button>
       </div>
-      {message ? <p className="max-w-72 text-xs text-green-700">{message}</p> : null}
       {errorMessage ? (
         <p className="max-w-72 text-xs text-red-600">{errorMessage}</p>
       ) : null}

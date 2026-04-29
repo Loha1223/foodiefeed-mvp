@@ -6,6 +6,8 @@ import {
   createComment,
   fetchCommentsByPostId,
 } from "@/lib/comments";
+import { useToast } from "@/hooks/useToast";
+import { getUserFriendlyErrorMessage } from "@/lib/errorMessages";
 import { getExpiryLabel } from "@/lib/time";
 
 type DetailModalProps = {
@@ -21,6 +23,7 @@ export function DetailModal({
   onClose,
   onCommentCreated,
 }: DetailModalProps) {
+  const { showToast } = useToast();
   const postId = post?.id;
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentContent, setCommentContent] = useState("");
@@ -89,12 +92,21 @@ export function DetailModal({
       setComments((currentComments) => [...currentComments, newComment]);
       setCommentContent("");
       onCommentCreated?.(post.id);
+      showToast({
+        variant: "success",
+        title: "留言成功",
+        message: "你的留言已送出。",
+      });
     } catch (error) {
+      const message = getUserFriendlyErrorMessage(error, "留言送出失敗，請稍後再試。");
       setFormError(
-        error instanceof Error
-          ? error.message
-          : "留言送出失敗，請稍後再試",
+        message,
       );
+      showToast({
+        variant: "error",
+        title: "留言失敗",
+        message,
+      });
     } finally {
       setIsSubmittingComment(false);
     }
@@ -246,7 +258,7 @@ export function DetailModal({
                   disabled={isSubmittingComment}
                   className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-stone-400"
                 >
-                  {isSubmittingComment ? "送出中" : "送出留言"}
+                  {isSubmittingComment ? "送出中..." : "送出留言"}
                 </button>
               </div>
             </form>

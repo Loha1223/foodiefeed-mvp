@@ -42,7 +42,7 @@ export function AdminPanel({
   const emptyLabel = isMineMode
     ? "目前還沒有你發佈的情報"
     : "目前沒有任何情報";
-  const loadingLabel = isMineMode ? "投稿載入中..." : "Admin 資料載入中...";
+  const loadingLabel = "資料載入中...";
 
   return (
     <section className="border-b border-stone-200 bg-white">
@@ -74,7 +74,7 @@ export function AdminPanel({
 
           {isAuthLoading ? (
             <div className="bg-stone-50 px-4 py-8 text-center text-sm text-stone-500">
-              登入狀態確認中...
+              載入中...
             </div>
           ) : null}
 

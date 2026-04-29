@@ -15,6 +15,8 @@ import {
   MAX_POST_IMAGE_SIZE_BYTES,
   uploadPostImage,
 } from "@/lib/storage";
+import { useToast } from "@/hooks/useToast";
+import { getUserFriendlyErrorMessage } from "@/lib/errorMessages";
 
 type PostModalProps = {
   isOpen: boolean;
@@ -47,6 +49,7 @@ export function PostModal({
   onClose,
   onCreatePost,
 }: PostModalProps) {
+  const { showToast } = useToast();
   const [form, setForm] = useState<CreatePostInput>(initialFormState);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [localPreviewUrl, setLocalPreviewUrl] = useState("");
@@ -182,9 +185,13 @@ export function PostModal({
       resetForm();
       onClose();
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "新增情報失敗，請稍後再試",
-      );
+      const message = getUserFriendlyErrorMessage(error, "新增情報失敗，請稍後再試。");
+      setErrorMessage(message);
+      showToast({
+        variant: "error",
+        title: "發佈失敗",
+        message,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -371,7 +378,7 @@ export function PostModal({
               disabled={isSubmitting}
               className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-stone-400"
             >
-              {isSubmitting ? "送出中" : "送出"}
+              {isSubmitting ? "送出中..." : "送出"}
             </button>
           </div>
         </form>

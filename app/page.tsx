@@ -5,8 +5,11 @@ import { AdminPanel } from "@/components/admin/AdminPanel";
 import { FilterBar } from "@/components/feed/FilterBar";
 import { MasonryGrid } from "@/components/feed/MasonryGrid";
 import { Navbar } from "@/components/global/Navbar";
+import { Toast } from "@/components/global/Toast";
 import { DetailModal } from "@/components/modals/DetailModal";
 import { PostModal } from "@/components/modals/PostModal";
+import { ToastProvider, useToast } from "@/hooks/useToast";
+import { getUserFriendlyErrorMessage } from "@/lib/errorMessages";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   createPost,
@@ -96,7 +99,7 @@ function createMockPosts(): Post[] {
   ];
 }
 
-export default function Home() {
+function HomeContent() {
   const initialPosts = useMemo(() => createMockPosts(), []);
   const [feedPosts, setFeedPosts] = useState<Post[]>(initialPosts);
   const [myPosts, setMyPosts] = useState<Post[]>([]);
@@ -110,6 +113,7 @@ export default function Home() {
   const [myPostsError, setMyPostsError] = useState<string | null>(null);
   const [adminPostsError, setAdminPostsError] = useState<string | null>(null);
   const { currentUser, isAdmin, isAuthLoading, authError } = useCurrentUser();
+  const { toast, showToast, closeToast } = useToast();
 
   useEffect(() => {
     async function loadPosts() {
@@ -165,9 +169,13 @@ export default function Home() {
       console.warn(
         error instanceof Error ? error.message : "Failed to fetch my posts",
       );
-      setMyPostsError(
-        error instanceof Error ? error.message : "目前無法載入你的投稿",
-      );
+      const message = getUserFriendlyErrorMessage(error, "目前無法載入你的投稿");
+      setMyPostsError(message);
+      showToast({
+        variant: "error",
+        title: "載入失敗",
+        message,
+      });
     } finally {
       setIsMyPostsLoading(false);
     }
@@ -194,9 +202,13 @@ export default function Home() {
       console.warn(
         error instanceof Error ? error.message : "Failed to fetch admin posts",
       );
-      setAdminPostsError(
-        error instanceof Error ? error.message : "目前無法載入 Admin 資料",
-      );
+      const message = getUserFriendlyErrorMessage(error, "目前無法載入 Admin 資料");
+      setAdminPostsError(message);
+      showToast({
+        variant: "error",
+        title: "載入失敗",
+        message,
+      });
     } finally {
       setIsAdminPostsLoading(false);
     }
@@ -249,28 +261,38 @@ export default function Home() {
   }
 
   async function handleCreatePost(input: CreatePostInput) {
-    const newPost = await createPost(input);
-    const postWithCommentCount = {
-      ...newPost,
-      comment_count: newPost.comment_count ?? 0,
-    };
+    try {
+      const newPost = await createPost(input);
+      const postWithCommentCount = {
+        ...newPost,
+        comment_count: newPost.comment_count ?? 0,
+      };
 
-    if (!isExpired(postWithCommentCount.expiry)) {
-      setFeedPosts((currentPosts) => [postWithCommentCount, ...currentPosts]);
-    }
+      if (!isExpired(postWithCommentCount.expiry)) {
+        setFeedPosts((currentPosts) => [postWithCommentCount, ...currentPosts]);
+      }
 
-    if (currentUser) {
-      setMyPosts((currentPosts) => [
-        postWithCommentCount,
-        ...currentPosts.filter((post) => post.id !== postWithCommentCount.id),
-      ]);
-    }
+      if (currentUser) {
+        setMyPosts((currentPosts) => [
+          postWithCommentCount,
+          ...currentPosts.filter((post) => post.id !== postWithCommentCount.id),
+        ]);
+      }
 
-    if (isAdmin) {
-      setAdminPosts((currentPosts) => [
-        postWithCommentCount,
-        ...currentPosts.filter((post) => post.id !== postWithCommentCount.id),
-      ]);
+      if (isAdmin) {
+        setAdminPosts((currentPosts) => [
+          postWithCommentCount,
+          ...currentPosts.filter((post) => post.id !== postWithCommentCount.id),
+        ]);
+      }
+
+      showToast({
+        variant: "success",
+        title: "發佈成功",
+        message: "情報已發佈。",
+      });
+    } catch (error) {
+      throw error;
     }
   }
 
@@ -302,6 +324,11 @@ export default function Home() {
       setMyPosts(previousMyPosts);
       setAdminPosts(previousAdminPosts);
       setSelectedPost(previousSelectedPost);
+      showToast({
+        variant: "error",
+        title: "按讚失敗",
+        message: getUserFriendlyErrorMessage(error, "按讚失敗，請稍後再試。"),
+      });
     }
   }
 
@@ -315,6 +342,11 @@ export default function Home() {
 
     try {
       await deletePost(post);
+      showToast({
+        variant: "success",
+        title: "刪除成功",
+        message: "情報已刪除。",
+      });
     } catch (error) {
       console.warn(
         error instanceof Error ? error.message : "Failed to delete post",
@@ -323,6 +355,11 @@ export default function Home() {
       setMyPosts(previousMyPosts);
       setAdminPosts(previousAdminPosts);
       setSelectedPost(previousSelectedPost);
+      showToast({
+        variant: "error",
+        title: "刪除失敗",
+        message: getUserFriendlyErrorMessage(error, "刪除情報失敗，請稍後再試。"),
+      });
     }
   }
 
@@ -416,6 +453,22 @@ export default function Home() {
         onClose={() => setSelectedPost(null)}
         onCommentCreated={handleCommentCreated}
       />
+      {toast ? (
+        <Toast
+          title={toast.title}
+          message={toast.message}
+          variant={toast.variant}
+          onClose={closeToast}
+        />
+      ) : null}
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <ToastProvider>
+      <HomeContent />
+    </ToastProvider>
   );
 }
