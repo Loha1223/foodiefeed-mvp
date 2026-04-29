@@ -566,6 +566,9 @@ function HomeContent() {
         onPostClick={handlePostClick}
         onPostLike={handleLike}
       />
+      <footer className="mx-auto max-w-6xl px-4 pb-8 pt-2 text-center text-xs text-stone-500 sm:px-6">
+        FoodieFeed 味鮮牆｜限時美食情報站
+      </footer>
       <PostModal
         isOpen={isPostModalOpen}
         onClose={() => setIsPostModalOpen(false)}

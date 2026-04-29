@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { taiwanDistricts } from "@/data/taiwanDistricts";
 import type { FeedFilterState, FeedSortOption } from "@/types/foodie";
 
@@ -47,13 +48,40 @@ export function FilterBar({
   onSortChange,
   onReset,
 }: FilterBarProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const districtOptions = filter.city
     ? (taiwanDistricts[filter.city as keyof typeof taiwanDistricts] ?? [])
     : [];
+  const activeSummary = useMemo(() => {
+    const conditionParts: string[] = [];
+
+    if (filter.keyword.trim()) {
+      conditionParts.push(`關鍵字：${filter.keyword.trim()}`);
+    }
+    if (filter.category !== "all") {
+      const categoryLabel =
+        categoryOptions.find((option) => option.value === filter.category)?.label ??
+        filter.category;
+      conditionParts.push(`類別：${categoryLabel}`);
+    }
+    if (filter.city) {
+      conditionParts.push(`縣市：${filter.city}`);
+    }
+    if (filter.district) {
+      conditionParts.push(`行政區：${filter.district}`);
+    }
+    const sortLabel =
+      sortOptions.find((option) => option.value === filter.sortBy)?.label ?? "最新發布";
+
+    return {
+      conditionParts,
+      sortLabel,
+    };
+  }, [filter]);
 
   return (
     <section className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
-      <div className="space-y-4 border-b border-stone-200 pb-4">
+      <div className="space-y-3 border-b border-stone-200 pb-4">
         <div>
           <p className="text-sm font-medium text-stone-500">即時情報</p>
           <p className="mt-1 text-lg font-semibold text-stone-900">
@@ -64,8 +92,8 @@ export function FilterBar({
           ) : null}
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <label className="block text-sm text-stone-600 sm:col-span-2 lg:col-span-3">
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+          <label className="block text-sm text-stone-600">
             關鍵字搜尋
             <input
               type="text"
@@ -76,7 +104,30 @@ export function FilterBar({
               className="mt-1.5 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-red-500 disabled:cursor-not-allowed disabled:bg-stone-100"
             />
           </label>
+          <button
+            type="button"
+            onClick={() => setIsExpanded((expanded) => !expanded)}
+            className="h-fit rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
+          >
+            {isExpanded ? "收合進階篩選" : "展開進階篩選"}
+          </button>
+        </div>
 
+        <div className="rounded-md bg-stone-50 px-3 py-2 text-xs text-stone-600">
+          {activeSummary.conditionParts.length > 0 ? (
+            <p className="flex flex-wrap gap-x-3 gap-y-1">
+              {activeSummary.conditionParts.map((summary) => (
+                <span key={summary}>{summary}</span>
+              ))}
+              <span>排序：{activeSummary.sortLabel}</span>
+            </p>
+          ) : (
+            <p>目前：未套用篩選（排序：{activeSummary.sortLabel}）</p>
+          )}
+        </div>
+
+        {isExpanded ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <label className="block text-sm text-stone-600">
             類別
             <select
@@ -155,7 +206,8 @@ export function FilterBar({
               清除篩選
             </button>
           </div>
-        </div>
+          </div>
+        ) : null}
       </div>
     </section>
   );
