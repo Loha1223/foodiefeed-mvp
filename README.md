@@ -44,6 +44,10 @@ supabase/migrations/20260429040000_create_increment_post_likes_rpc.sql
 supabase/migrations/20260429041000_create_foodie_post_images_bucket.sql
 ```
 
+```txt
+supabase/migrations/20260429042000_allow_public_delete_foodie_post_images.sql
+```
+
 可選：加入測試資料：
 
 ```txt
@@ -65,6 +69,7 @@ MVP 測試設定：
 - public bucket
 - public read
 - public upload
+- public delete for `posts/` images
 
 可使用 migration 建立 bucket 與 MVP policy：
 
@@ -72,13 +77,27 @@ MVP 測試設定：
 supabase/migrations/20260429041000_create_foodie_post_images_bucket.sql
 ```
 
+```txt
+supabase/migrations/20260429042000_allow_public_delete_foodie_post_images.sql
+```
+
 也可以在 Supabase Dashboard 手動建立：
 
 1. 到 Storage 建立 bucket：`foodie-post-images`
 2. 設定為 public bucket
 3. 加入 MVP 測試用 public read / public insert policy
+4. 若要刪除情報時同步清理圖片，也加入限制 `posts/` 路徑的 public delete policy
 
 正式上線前應改成登入後才能 upload，限制使用者只能寫入自己的路徑，並在後端或 policy 搭配檔案大小與 MIME type 檢查。
+
+刪除情報時：
+
+- `posts` table 會刪除該筆資料。
+- `comments` 透過 foreign key `on delete cascade` 自動刪除。
+- 如果圖片是上傳到 `foodie-post-images` 的 Storage 圖片，且 object path 以 `posts/` 開頭，會嘗試同步刪除該 Storage object。
+- 外部圖片 URL 與 `/placeholder-food.jpg` 不會刪除。
+- 如果 Storage cleanup 失敗，post 刪除仍視為成功，但會在 `console.warn` 顯示錯誤。
+- 正式上線後 Storage delete policy 應改成 ownership-based。
 
 ### MVP RLS 安全提醒
 
@@ -103,6 +122,7 @@ npm run dev
 10. 回到首頁，確認 PostCard 留言數 +1。
 11. 重新整理頁面，確認留言數仍依 comments table 正確計算。
 12. 開啟管理後台，刪除剛新增的情報。
+13. 若該情報使用上傳圖片，確認 Storage 中對應 `posts/` object 已被清理。
 
 ## 驗證指令
 

@@ -6,7 +6,7 @@ import { getExpiryLabel } from "@/lib/time";
 type AdminPanelProps = {
   isOpen: boolean;
   posts: Post[];
-  onDeletePost: (postId: number) => void;
+  onDeletePost: (post: Post) => void;
 };
 
 export function AdminPanel({ isOpen, posts, onDeletePost }: AdminPanelProps) {
@@ -48,7 +48,7 @@ export function AdminPanel({ isOpen, posts, onDeletePost }: AdminPanelProps) {
                   </div>
                   <button
                     type="button"
-                    onClick={() => onDeletePost(post.id)}
+                    onClick={() => onDeletePost(post)}
                     className="w-fit rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
                   >
                     刪除

@@ -145,19 +145,19 @@ export default function Home() {
     }
   }
 
-  async function handleDeletePost(postId: number) {
+  async function handleDeletePost(post: Post) {
     const previousPosts = posts;
     const previousSelectedPost = selectedPost;
 
     setPosts((currentPosts) =>
-      currentPosts.filter((post) => post.id !== postId),
+      currentPosts.filter((currentPost) => currentPost.id !== post.id),
     );
     setSelectedPost((currentPost) =>
-      currentPost?.id === postId ? null : currentPost,
+      currentPost?.id === post.id ? null : currentPost,
     );
 
     try {
-      await deletePost(postId);
+      await deletePost(post);
     } catch (error) {
       console.warn(
         error instanceof Error ? error.message : "Failed to delete post",

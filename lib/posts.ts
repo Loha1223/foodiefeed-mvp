@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabaseClient";
+import { deletePostImageByUrl } from "@/lib/storage";
 import type { CreatePostInput, Post } from "@/types/foodie";
 
 const SUPABASE_NOT_CONFIGURED_MESSAGE = "Supabase env is not configured";
@@ -150,12 +151,24 @@ export async function incrementPostLike(post: Post): Promise<Post> {
   return toPost(data as PostRow);
 }
 
-export async function deletePost(id: number): Promise<void> {
+export async function deletePost(post: Post): Promise<void> {
   const supabase = getClientOrThrow();
 
-  const { error } = await supabase.from("posts").delete().eq("id", id);
+  const { error } = await supabase.from("posts").delete().eq("id", post.id);
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  try {
+    await deletePostImageByUrl(post.img);
+  } catch (cleanupError) {
+    // The database delete already succeeded. Rolling back the UI here would
+    // show a post that no longer exists, so Storage cleanup failures are logged.
+    console.warn(
+      cleanupError instanceof Error
+        ? cleanupError.message
+        : "Failed to clean up post image",
+    );
   }
 }
