@@ -9,6 +9,7 @@ import { Toast } from "@/components/global/Toast";
 import { DetailModal } from "@/components/modals/DetailModal";
 import { PostModal } from "@/components/modals/PostModal";
 import { ToastProvider, useToast } from "@/hooks/useToast";
+import { fetchActiveSponsoredPosts } from "@/lib/ads";
 import { getUserFriendlyErrorMessage } from "@/lib/errorMessages";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
@@ -25,6 +26,7 @@ import type {
   FeedFilterState,
   FeedSortOption,
   Post,
+  SponsoredPost,
 } from "@/types/foodie";
 
 function createMockPosts(): Post[] {
@@ -144,6 +146,7 @@ function HomeContent() {
   const [feedPosts, setFeedPosts] = useState<Post[]>(initialPosts);
   const [myPosts, setMyPosts] = useState<Post[]>([]);
   const [adminPosts, setAdminPosts] = useState<Post[]>([]);
+  const [sponsoredPosts, setSponsoredPosts] = useState<SponsoredPost[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState(true);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -208,6 +211,29 @@ function HomeContent() {
 
     void loadPosts();
   }, []);
+
+  useEffect(() => {
+    async function loadSponsoredPosts() {
+      if (isFeedLoading) {
+        return;
+      }
+
+      const activeSponsoredPosts = await fetchActiveSponsoredPosts({
+        city: feedFilter.city,
+        district: feedFilter.district,
+        category:
+          feedFilter.category === "all" ? undefined : feedFilter.category,
+      });
+      setSponsoredPosts(activeSponsoredPosts);
+    }
+
+    void loadSponsoredPosts();
+  }, [
+    isFeedLoading,
+    feedFilter.city,
+    feedFilter.district,
+    feedFilter.category,
+  ]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -563,6 +589,7 @@ function HomeContent() {
       <MasonryGrid
         isLoading={isFeedLoading}
         posts={filteredFeedPosts}
+        sponsoredPosts={sponsoredPosts}
         onPostClick={handlePostClick}
         onPostLike={handleLike}
       />

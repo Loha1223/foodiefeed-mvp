@@ -54,3 +54,21 @@ export type FeedFilterState = {
   district: string;
   sortBy: FeedSortOption;
 };
+
+export type SponsoredPost = {
+  id: number;
+  created_at: string;
+  title: string;
+  brand_name: string;
+  description?: string | null;
+  image_url?: string | null;
+  target_url?: string | null;
+  city?: string | null;
+  district?: string | null;
+  category?: string | null;
+  placement: string;
+  starts_at: string;
+  ends_at: string;
+  is_active: boolean;
+  priority: number;
+};

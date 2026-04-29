@@ -60,6 +60,10 @@ supabase/migrations/20260429044000_enforce_ownership_rls.sql
 supabase/migrations/20260429045000_extend_management_select_policies.sql
 ```
 
+```txt
+supabase/migrations/20260429046000_create_sponsored_posts.sql
+```
+
 可選：加入測試資料：
 
 ```txt
@@ -153,6 +157,47 @@ Navbar 的「我的投稿」會開啟「我的情報管理」區塊：
 supabase/migrations/20260429045000_extend_management_select_policies.sql
 ```
 
+### Sponsored Posts 廣告卡 MVP
+
+本階段新增自營廣告版位，不接 Google AdSense、不做付款、不做點擊追蹤，也還沒有廣告後台。
+
+資料表：
+
+```txt
+sponsored_posts
+```
+
+主要欄位：
+
+- `title`：廣告標題。
+- `brand_name`：品牌名稱。
+- `description`：廣告描述。
+- `image_url`：廣告圖片 URL，空值時使用 `/placeholder-food.jpg`。
+- `target_url`：活動連結，前端會以新分頁開啟。
+- `city` / `district` / `category`：可選的投放匹配條件，空值代表不限。
+- `placement`：目前使用 `feed`。
+- `starts_at` / `ends_at`：投放期間。
+- `is_active`：是否啟用。
+- `priority`：排序權重，數字越大越優先。
+
+RLS：
+
+- public 只能讀取目前有效的 active ads：`is_active = true`、`starts_at <= now()`、`ends_at >= now()`。
+- admin 可 select / insert / update / delete 所有 sponsored posts。
+- 一般 authenticated user 不可新增、修改或刪除廣告。
+
+用 Supabase Table Editor 手動新增廣告：
+
+1. 開啟 Supabase Dashboard -> Table Editor。
+2. 選擇 `sponsored_posts`。
+3. 新增一筆資料，至少填入 `title`、`brand_name`、`ends_at`。
+4. `placement` 使用 `feed`。
+5. `is_active` 設為 `true`。
+6. 若要全站顯示，`city`、`district`、`category` 保持空值。
+7. 若要區域或類別投放，填入對應的 `city`、`district` 或 `category`。
+
+Feed 會在每 6 張自然情報卡後插入 1 張 SponsoredCard。每筆廣告最多顯示一次，不會在同一批 feed 中循環重複曝光。廣告卡會清楚標示「贊助」，並使用與 PostCard 不同的視覺樣式，避免偽裝成自然情報。
+
 ### Supabase Storage
 
 圖片上傳使用 bucket：
@@ -239,6 +284,9 @@ npm run dev
 27. 登出後確認不能再發文、留言、上傳圖片。
 28. 回到原作者帳號，開啟「我的投稿」，刪除自己新增的情報。
 29. 若該情報使用上傳圖片，確認 Storage 中對應 `posts/{auth.uid()}/...` object 已被清理。
+30. 在 `sponsored_posts` 新增 active feed 廣告，確認首頁每 6 張自然情報後插入 1 張標示「贊助」的廣告卡。
+31. 設定廣告 `city` / `district` / `category` 後，確認 Feed 篩選條件符合時才顯示。
+32. 設定 `target_url` 後，確認「查看活動」會以新分頁開啟。
 
 ## 驗證指令
 

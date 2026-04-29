@@ -1,11 +1,14 @@
 "use client";
 
-import type { Post } from "@/types/foodie";
+import { Fragment } from "react";
+import { SponsoredCard } from "@/components/ads/SponsoredCard";
+import type { Post, SponsoredPost } from "@/types/foodie";
 import { PostCard } from "./PostCard";
 
 type MasonryGridProps = {
   isLoading?: boolean;
   posts: Post[];
+  sponsoredPosts?: SponsoredPost[];
   onPostClick: (post: Post) => void;
   onPostLike: (post: Post) => void;
 };
@@ -13,6 +16,7 @@ type MasonryGridProps = {
 export function MasonryGrid({
   isLoading = false,
   posts,
+  sponsoredPosts = [],
   onPostClick,
   onPostLike,
 }: MasonryGridProps) {
@@ -71,15 +75,36 @@ export function MasonryGrid({
         <p className="mt-1 text-sm text-stone-500">{sectionDescription}</p>
       </div>
       <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
-        {posts.map((post) => (
-          <div key={post.id} className="mb-5 break-inside-avoid">
-            <PostCard
-              post={post}
-              onClick={onPostClick}
-              onLike={onPostLike}
-            />
-          </div>
-        ))}
+        {posts.map((post, index) => {
+          const sponsoredPostIndex = Math.floor((index + 1) / 6) - 1;
+          const shouldInsertSponsoredPost =
+            (index + 1) % 6 === 0 &&
+            sponsoredPostIndex >= 0 &&
+            sponsoredPostIndex < sponsoredPosts.length;
+          const sponsoredPost = shouldInsertSponsoredPost
+            ? sponsoredPosts[sponsoredPostIndex]
+            : null;
+
+          return (
+            <Fragment key={post.id}>
+              <div className="mb-5 break-inside-avoid">
+                <PostCard
+                  post={post}
+                  onClick={onPostClick}
+                  onLike={onPostLike}
+                />
+              </div>
+              {sponsoredPost ? (
+                <div
+                  key={`sponsored-${sponsoredPost.id}`}
+                  className="mb-5 break-inside-avoid"
+                >
+                  <SponsoredCard sponsoredPost={sponsoredPost} />
+                </div>
+              ) : null}
+            </Fragment>
+          );
+        })}
       </div>
     </section>
   );
