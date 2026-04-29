@@ -40,3 +40,17 @@ export type Comment = {
   user_name: string;
   content: string;
 };
+
+export type FeedSortOption =
+  | "latest"
+  | "expiry_soon"
+  | "popular"
+  | "comments";
+
+export type FeedFilterState = {
+  keyword: string;
+  category: FoodCategory | "all";
+  city: string;
+  district: string;
+  sortBy: FeedSortOption;
+};

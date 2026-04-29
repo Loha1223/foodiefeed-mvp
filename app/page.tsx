@@ -20,7 +20,12 @@ import {
   incrementPostLike,
 } from "@/lib/posts";
 import { isExpired } from "@/lib/time";
-import type { CreatePostInput, Post } from "@/types/foodie";
+import type {
+  CreatePostInput,
+  FeedFilterState,
+  FeedSortOption,
+  Post,
+} from "@/types/foodie";
 
 function createMockPosts(): Post[] {
   const now = Date.now();
@@ -112,8 +117,72 @@ function HomeContent() {
   const [isAdminPostsLoading, setIsAdminPostsLoading] = useState(false);
   const [myPostsError, setMyPostsError] = useState<string | null>(null);
   const [adminPostsError, setAdminPostsError] = useState<string | null>(null);
+  const [feedFilter, setFeedFilter] = useState<FeedFilterState>({
+    keyword: "",
+    category: "all",
+    city: "",
+    district: "",
+    sortBy: "latest",
+  });
   const { currentUser, isAdmin, isAuthLoading, authError } = useCurrentUser();
   const { toast, showToast, closeToast } = useToast();
+
+  const filteredFeedPosts = useMemo(() => {
+    const keyword = feedFilter.keyword.trim().toLowerCase();
+    const filtered = feedPosts.filter((post) => {
+      if (keyword) {
+        const searchable = [
+          post.title,
+          post.name,
+          post.address,
+          post.city,
+          post.district,
+          post.category,
+        ]
+          .join(" ")
+          .toLowerCase();
+
+        if (!searchable.includes(keyword)) {
+          return false;
+        }
+      }
+
+      if (feedFilter.category !== "all" && post.category !== feedFilter.category) {
+        return false;
+      }
+
+      if (feedFilter.city && post.city !== feedFilter.city) {
+        return false;
+      }
+
+      if (feedFilter.district && post.district !== feedFilter.district) {
+        return false;
+      }
+
+      return true;
+    });
+
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      if (feedFilter.sortBy === "expiry_soon") {
+        return new Date(a.expiry).getTime() - new Date(b.expiry).getTime();
+      }
+
+      if (feedFilter.sortBy === "popular") {
+        return b.likes - a.likes;
+      }
+
+      if (feedFilter.sortBy === "comments") {
+        return (b.comment_count ?? 0) - (a.comment_count ?? 0);
+      }
+
+      return (
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    });
+
+    return sorted;
+  }, [feedPosts, feedFilter]);
 
   useEffect(() => {
     async function loadPosts() {
@@ -395,6 +464,20 @@ function HomeContent() {
     }
   }
 
+  function handleResetFeedFilter() {
+    setFeedFilter({
+      keyword: "",
+      category: "all",
+      city: "",
+      district: "",
+      sortBy: "latest",
+    });
+  }
+
+  function handleSortChange(sortBy: FeedSortOption) {
+    setFeedFilter((current) => ({ ...current, sortBy }));
+  }
+
   return (
     <main className="min-h-screen">
       <Navbar
@@ -436,9 +519,34 @@ function HomeContent() {
         onDeletePost={handleDeletePost}
         onRefresh={() => void loadAdminPosts()}
       />
-      <FilterBar totalCount={feedPosts.length} />
+      <FilterBar
+        filter={feedFilter}
+        totalCount={feedPosts.length}
+        filteredCount={filteredFeedPosts.length}
+        onKeywordChange={(value) =>
+          setFeedFilter((current) => ({ ...current, keyword: value }))
+        }
+        onCategoryChange={(value) =>
+          setFeedFilter((current) => ({ ...current, category: value }))
+        }
+        onCityChange={(value) =>
+          setFeedFilter((current) => ({
+            ...current,
+            city: value,
+            district: "",
+          }))
+        }
+        onDistrictChange={(value) =>
+          setFeedFilter((current) => ({
+            ...current,
+            district: value,
+          }))
+        }
+        onSortChange={handleSortChange}
+        onReset={handleResetFeedFilter}
+      />
       <MasonryGrid
-        posts={feedPosts}
+        posts={filteredFeedPosts}
         onPostClick={handlePostClick}
         onPostLike={handleLike}
       />
