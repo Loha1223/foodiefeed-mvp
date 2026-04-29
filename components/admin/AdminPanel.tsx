@@ -2,7 +2,7 @@
 
 import type { User } from "@supabase/supabase-js";
 import type { Post } from "@/types/foodie";
-import { getExpiryLabel } from "@/lib/time";
+import { getExpiryLabel, isExpired } from "@/lib/time";
 
 type AdminPanelProps = {
   mode: "mine" | "admin";
@@ -11,7 +11,10 @@ type AdminPanelProps = {
   currentUser: User | null;
   isAdmin: boolean;
   isAuthLoading: boolean;
+  isLoading?: boolean;
+  error?: string | null;
   onDeletePost: (post: Post) => void;
+  onRefresh?: () => void;
 };
 
 export function AdminPanel({
@@ -21,26 +24,25 @@ export function AdminPanel({
   currentUser,
   isAdmin,
   isAuthLoading,
+  isLoading = false,
+  error,
   onDeletePost,
+  onRefresh,
 }: AdminPanelProps) {
   if (!isOpen) {
     return null;
   }
 
   const isMineMode = mode === "mine";
-  const visiblePosts =
-    mode === "admin"
-      ? posts
-      : currentUser
-        ? posts.filter((post) => post.user_id === currentUser.id)
-        : [];
+  const visiblePosts = posts;
   const title = isMineMode ? "我的情報管理" : "Admin 情報管理";
   const description = isMineMode
-    ? "只顯示你自己發佈的情報。"
-    : "管理目前前端已載入的情報；完整跨範圍後台會在下一階段擴充。";
+    ? "顯示你自己發佈的所有情報，包含已過期內容。"
+    : "管理所有情報，包含已過期內容。";
   const emptyLabel = isMineMode
     ? "目前還沒有你發佈的情報"
     : "目前沒有任何情報";
+  const loadingLabel = isMineMode ? "投稿載入中..." : "Admin 資料載入中...";
 
   return (
     <section className="border-b border-stone-200 bg-white">
@@ -54,6 +56,22 @@ export function AdminPanel({
         </div>
 
         <div className="overflow-hidden rounded-lg border border-stone-200">
+          <div className="flex items-center justify-between gap-3 border-b border-stone-100 bg-stone-50 px-4 py-3">
+            <span className="text-sm text-stone-500">
+              {isMineMode ? "我的投稿資料" : "Admin 管理資料"}
+            </span>
+            {onRefresh ? (
+              <button
+                type="button"
+                onClick={onRefresh}
+                disabled={isLoading}
+                className="rounded-md border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-white disabled:cursor-not-allowed disabled:text-stone-400"
+              >
+                重新整理
+              </button>
+            ) : null}
+          </div>
+
           {isAuthLoading ? (
             <div className="bg-stone-50 px-4 py-8 text-center text-sm text-stone-500">
               登入狀態確認中...
@@ -74,6 +92,25 @@ export function AdminPanel({
 
           {!isAuthLoading &&
           ((isMineMode && currentUser) || (mode === "admin" && isAdmin)) &&
+          isLoading ? (
+            <div className="bg-stone-50 px-4 py-8 text-center text-sm text-stone-500">
+              {loadingLabel}
+            </div>
+          ) : null}
+
+          {!isAuthLoading &&
+          ((isMineMode && currentUser) || (mode === "admin" && isAdmin)) &&
+          !isLoading &&
+          error ? (
+            <div className="bg-red-50 px-4 py-8 text-center text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
+
+          {!isAuthLoading &&
+          ((isMineMode && currentUser) || (mode === "admin" && isAdmin)) &&
+          !isLoading &&
+          !error &&
           visiblePosts.length === 0 ? (
             <div className="bg-stone-50 px-4 py-8 text-center text-sm text-stone-500">
               {emptyLabel}
@@ -82,6 +119,8 @@ export function AdminPanel({
 
           {!isAuthLoading &&
           ((isMineMode && currentUser) || (mode === "admin" && isAdmin)) &&
+          !isLoading &&
+          !error &&
           visiblePosts.length > 0 ? (
             <ul className="divide-y divide-stone-200">
               {visiblePosts.map((post) => (
@@ -106,8 +145,15 @@ export function AdminPanel({
                         </span>
                         <span>Likes: {post.likes}</span>
                         <span>留言: {post.comment_count ?? 0}</span>
+                        <span>
+                          狀態: {isExpired(post.expiry) ? "已過期" : "進行中"}
+                        </span>
                       </div>
-                    ) : null}
+                    ) : (
+                      <p className="mt-2 text-xs text-stone-500">
+                        狀態: {isExpired(post.expiry) ? "已過期" : "進行中"}
+                      </p>
+                    )}
                   </div>
                   <button
                     type="button"

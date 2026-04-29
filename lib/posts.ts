@@ -62,21 +62,8 @@ function getDefaultExpiry(): string {
   return expiry.toISOString();
 }
 
-export async function fetchActivePosts(): Promise<Post[]> {
+export async function attachCommentCounts(posts: Post[]): Promise<Post[]> {
   const supabase = getClientOrThrow();
-  const now = new Date().toISOString();
-
-  const { data, error } = await supabase
-    .from("posts")
-    .select("*")
-    .gt("expiry", now)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const posts = ((data ?? []) as PostRow[]).map(toPost);
 
   if (posts.length === 0) {
     return [];
@@ -104,6 +91,59 @@ export async function fetchActivePosts(): Promise<Post[]> {
     ...post,
     comment_count: countMap[post.id] ?? 0,
   }));
+}
+
+export async function fetchActivePosts(): Promise<Post[]> {
+  const supabase = getClientOrThrow();
+  const now = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*")
+    .gt("expiry", now)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return attachCommentCounts(((data ?? []) as PostRow[]).map(toPost));
+}
+
+export async function fetchMyPosts(): Promise<Post[]> {
+  const supabase = getClientOrThrow();
+  const user = await getCurrentUser();
+
+  if (!user) {
+    throw new Error("請先登入後查看自己的投稿");
+  }
+
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return attachCommentCounts(((data ?? []) as PostRow[]).map(toPost));
+}
+
+export async function fetchAdminPosts(): Promise<Post[]> {
+  const supabase = getClientOrThrow();
+
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return attachCommentCounts(((data ?? []) as PostRow[]).map(toPost));
 }
 
 export async function createPost(input: CreatePostInput): Promise<Post> {

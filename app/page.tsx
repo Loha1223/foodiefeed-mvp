@@ -12,8 +12,11 @@ import {
   createPost,
   deletePost,
   fetchActivePosts,
+  fetchAdminPosts,
+  fetchMyPosts,
   incrementPostLike,
 } from "@/lib/posts";
+import { isExpired } from "@/lib/time";
 import type { CreatePostInput, Post } from "@/types/foodie";
 
 function createMockPosts(): Post[] {
@@ -95,18 +98,24 @@ function createMockPosts(): Post[] {
 
 export default function Home() {
   const initialPosts = useMemo(() => createMockPosts(), []);
-  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [feedPosts, setFeedPosts] = useState<Post[]>(initialPosts);
+  const [myPosts, setMyPosts] = useState<Post[]>([]);
+  const [adminPosts, setAdminPosts] = useState<Post[]>([]);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [isMyPostsOpen, setIsMyPostsOpen] = useState(false);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const [isMyPostsLoading, setIsMyPostsLoading] = useState(false);
+  const [isAdminPostsLoading, setIsAdminPostsLoading] = useState(false);
+  const [myPostsError, setMyPostsError] = useState<string | null>(null);
+  const [adminPostsError, setAdminPostsError] = useState<string | null>(null);
   const { currentUser, isAdmin, isAuthLoading, authError } = useCurrentUser();
 
   useEffect(() => {
     async function loadPosts() {
       try {
         const activePosts = await fetchActivePosts();
-        setPosts(activePosts);
+        setFeedPosts(activePosts);
       } catch (error) {
         console.warn(
           error instanceof Error ? error.message : "Failed to fetch posts",
@@ -117,47 +126,192 @@ export default function Home() {
     void loadPosts();
   }, []);
 
+  useEffect(() => {
+    if (!currentUser) {
+      setMyPosts([]);
+      setAdminPosts([]);
+      setMyPostsError(null);
+      setAdminPostsError(null);
+      setIsMyPostsOpen(false);
+      setIsAdminPanelOpen(false);
+      return;
+    }
+
+    if (!isAdmin) {
+      setAdminPosts([]);
+      setAdminPostsError(null);
+      setIsAdminPanelOpen(false);
+    }
+  }, [currentUser, isAdmin]);
+
+  async function loadMyPosts() {
+    if (isMyPostsLoading) {
+      return;
+    }
+
+    if (!currentUser) {
+      setMyPosts([]);
+      setMyPostsError(null);
+      return;
+    }
+
+    setIsMyPostsLoading(true);
+    setMyPostsError(null);
+
+    try {
+      const fetchedPosts = await fetchMyPosts();
+      setMyPosts(fetchedPosts);
+    } catch (error) {
+      console.warn(
+        error instanceof Error ? error.message : "Failed to fetch my posts",
+      );
+      setMyPostsError(
+        error instanceof Error ? error.message : "目前無法載入你的投稿",
+      );
+    } finally {
+      setIsMyPostsLoading(false);
+    }
+  }
+
+  async function loadAdminPosts() {
+    if (isAdminPostsLoading) {
+      return;
+    }
+
+    if (!isAdmin) {
+      setAdminPosts([]);
+      setAdminPostsError(null);
+      return;
+    }
+
+    setIsAdminPostsLoading(true);
+    setAdminPostsError(null);
+
+    try {
+      const fetchedPosts = await fetchAdminPosts();
+      setAdminPosts(fetchedPosts);
+    } catch (error) {
+      console.warn(
+        error instanceof Error ? error.message : "Failed to fetch admin posts",
+      );
+      setAdminPostsError(
+        error instanceof Error ? error.message : "目前無法載入 Admin 資料",
+      );
+    } finally {
+      setIsAdminPostsLoading(false);
+    }
+  }
+
+  function removePostFromLists(postId: number) {
+    const removePost = (currentPosts: Post[]) =>
+      currentPosts.filter((currentPost) => currentPost.id !== postId);
+
+    setFeedPosts(removePost);
+    setMyPosts(removePost);
+    setAdminPosts(removePost);
+    setSelectedPost((currentPost) =>
+      currentPost?.id === postId ? null : currentPost,
+    );
+  }
+
+  function replacePostInLists(updatedPost: Post) {
+    const mergePost = (currentPost: Post) =>
+      currentPost.id === updatedPost.id
+        ? {
+            ...updatedPost,
+            comment_count:
+              currentPost.comment_count ?? updatedPost.comment_count ?? 0,
+          }
+        : currentPost;
+
+    setFeedPosts((currentPosts) => currentPosts.map(mergePost));
+    setMyPosts((currentPosts) => currentPosts.map(mergePost));
+    setAdminPosts((currentPosts) => currentPosts.map(mergePost));
+    setSelectedPost((currentPost) =>
+      currentPost?.id === updatedPost.id ? mergePost(currentPost) : currentPost,
+    );
+  }
+
+  function incrementCommentCountInLists(postId: number) {
+    const incrementCommentCount = (currentPost: Post) =>
+      currentPost.id === postId
+        ? { ...currentPost, comment_count: (currentPost.comment_count ?? 0) + 1 }
+        : currentPost;
+
+    setFeedPosts((currentPosts) => currentPosts.map(incrementCommentCount));
+    setMyPosts((currentPosts) => currentPosts.map(incrementCommentCount));
+    setAdminPosts((currentPosts) => currentPosts.map(incrementCommentCount));
+    setSelectedPost((currentPost) =>
+      currentPost?.id === postId
+        ? incrementCommentCount(currentPost)
+        : currentPost,
+    );
+  }
+
   async function handleCreatePost(input: CreatePostInput) {
     const newPost = await createPost(input);
-    setPosts((currentPosts) => [newPost, ...currentPosts]);
+    const postWithCommentCount = {
+      ...newPost,
+      comment_count: newPost.comment_count ?? 0,
+    };
+
+    if (!isExpired(postWithCommentCount.expiry)) {
+      setFeedPosts((currentPosts) => [postWithCommentCount, ...currentPosts]);
+    }
+
+    if (currentUser) {
+      setMyPosts((currentPosts) => [
+        postWithCommentCount,
+        ...currentPosts.filter((post) => post.id !== postWithCommentCount.id),
+      ]);
+    }
+
+    if (isAdmin) {
+      setAdminPosts((currentPosts) => [
+        postWithCommentCount,
+        ...currentPosts.filter((post) => post.id !== postWithCommentCount.id),
+      ]);
+    }
   }
 
   async function handleLike(post: Post) {
-    const previousPosts = posts;
+    const previousFeedPosts = feedPosts;
+    const previousMyPosts = myPosts;
+    const previousAdminPosts = adminPosts;
+    const previousSelectedPost = selectedPost;
+    const incrementLike = (currentPost: Post) =>
+      currentPost.id === post.id
+        ? { ...currentPost, likes: currentPost.likes + 1 }
+        : currentPost;
 
-    setPosts((currentPosts) =>
-      currentPosts.map((currentPost) =>
-        currentPost.id === post.id
-          ? { ...currentPost, likes: currentPost.likes + 1 }
-          : currentPost,
-      ),
+    setFeedPosts((currentPosts) => currentPosts.map(incrementLike));
+    setMyPosts((currentPosts) => currentPosts.map(incrementLike));
+    setAdminPosts((currentPosts) => currentPosts.map(incrementLike));
+    setSelectedPost((currentPost) =>
+      currentPost?.id === post.id ? incrementLike(currentPost) : currentPost,
     );
 
     try {
       const updatedPost = await incrementPostLike(post);
-      setPosts((currentPosts) =>
-        currentPosts.map((currentPost) =>
-          currentPost.id === updatedPost.id ? updatedPost : currentPost,
-        ),
-      );
+      replacePostInLists(updatedPost);
     } catch (error) {
       console.warn(
         error instanceof Error ? error.message : "Failed to update likes",
       );
-      setPosts(previousPosts);
+      setFeedPosts(previousFeedPosts);
+      setMyPosts(previousMyPosts);
+      setAdminPosts(previousAdminPosts);
+      setSelectedPost(previousSelectedPost);
     }
   }
 
   async function handleDeletePost(post: Post) {
-    const previousPosts = posts;
+    const previousFeedPosts = feedPosts;
+    const previousMyPosts = myPosts;
+    const previousAdminPosts = adminPosts;
     const previousSelectedPost = selectedPost;
 
-    setPosts((currentPosts) =>
-      currentPosts.filter((currentPost) => currentPost.id !== post.id),
-    );
-    setSelectedPost((currentPost) =>
-      currentPost?.id === post.id ? null : currentPost,
-    );
+    removePostFromLists(post.id);
 
     try {
       await deletePost(post);
@@ -165,7 +319,9 @@ export default function Home() {
       console.warn(
         error instanceof Error ? error.message : "Failed to delete post",
       );
-      setPosts(previousPosts);
+      setFeedPosts(previousFeedPosts);
+      setMyPosts(previousMyPosts);
+      setAdminPosts(previousAdminPosts);
       setSelectedPost(previousSelectedPost);
     }
   }
@@ -175,25 +331,31 @@ export default function Home() {
   }
 
   function handleCommentCreated(postId: number) {
-    setPosts((currentPosts) =>
-      currentPosts.map((post) =>
-        post.id === postId
-          ? { ...post, comment_count: (post.comment_count ?? 0) + 1 }
-          : post,
-      ),
-    );
-    setSelectedPost((currentPost) =>
-      currentPost?.id === postId
-        ? {
-            ...currentPost,
-            comment_count: (currentPost.comment_count ?? 0) + 1,
-          }
-        : currentPost,
-    );
+    incrementCommentCountInLists(postId);
   }
 
   function handleOpenPostModal() {
     setIsPostModalOpen(true);
+  }
+
+  function handleToggleMyPosts() {
+    const shouldOpen = !isMyPostsOpen;
+    setIsMyPostsOpen(shouldOpen);
+    setIsAdminPanelOpen(false);
+
+    if (shouldOpen) {
+      void loadMyPosts();
+    }
+  }
+
+  function handleToggleAdminPanel() {
+    const shouldOpen = !isAdminPanelOpen;
+    setIsAdminPanelOpen(shouldOpen);
+    setIsMyPostsOpen(false);
+
+    if (shouldOpen) {
+      void loadAdminPosts();
+    }
   }
 
   return (
@@ -204,14 +366,8 @@ export default function Home() {
         currentUser={currentUser}
         isAdmin={isAdmin}
         isAuthLoading={isAuthLoading}
-        onToggleMyPosts={() => {
-          setIsMyPostsOpen((isOpen) => !isOpen);
-          setIsAdminPanelOpen(false);
-        }}
-        onToggleAdminPanel={() => {
-          setIsAdminPanelOpen((isOpen) => !isOpen);
-          setIsMyPostsOpen(false);
-        }}
+        onToggleMyPosts={handleToggleMyPosts}
+        onToggleAdminPanel={handleToggleAdminPanel}
         onOpenPostModal={handleOpenPostModal}
       />
       {authError ? (
@@ -222,24 +378,30 @@ export default function Home() {
       <AdminPanel
         mode="mine"
         isOpen={isMyPostsOpen}
-        posts={posts}
+        posts={myPosts}
         currentUser={currentUser}
         isAdmin={isAdmin}
         isAuthLoading={isAuthLoading}
+        isLoading={isMyPostsLoading}
+        error={myPostsError}
         onDeletePost={handleDeletePost}
+        onRefresh={() => void loadMyPosts()}
       />
       <AdminPanel
         mode="admin"
         isOpen={isAdminPanelOpen}
-        posts={posts}
+        posts={adminPosts}
         currentUser={currentUser}
         isAdmin={isAdmin}
         isAuthLoading={isAuthLoading}
+        isLoading={isAdminPostsLoading}
+        error={adminPostsError}
         onDeletePost={handleDeletePost}
+        onRefresh={() => void loadAdminPosts()}
       />
-      <FilterBar totalCount={posts.length} />
+      <FilterBar totalCount={feedPosts.length} />
       <MasonryGrid
-        posts={posts}
+        posts={feedPosts}
         onPostClick={handlePostClick}
         onPostLike={handleLike}
       />
