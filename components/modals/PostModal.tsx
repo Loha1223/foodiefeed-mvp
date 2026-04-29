@@ -1,0 +1,381 @@
+"use client";
+
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
+import type { FoodCategory } from "@/types/foodie";
+import type { CreatePostInput } from "@/types/foodie";
+import { taiwanDistricts, type TaiwanCity } from "@/data/taiwanDistricts";
+import {
+  ALLOWED_POST_IMAGE_TYPES,
+  MAX_POST_IMAGE_SIZE_BYTES,
+  uploadPostImage,
+} from "@/lib/storage";
+
+type PostModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreatePost: (input: CreatePostInput) => Promise<void>;
+};
+
+const categories: FoodCategory[] = [
+  "快閃店",
+  "當日限定",
+  "期間限定優惠",
+  "在地美食",
+  "新品上市",
+];
+
+const cities = Object.keys(taiwanDistricts) as TaiwanCity[];
+
+const initialFormState: CreatePostInput = {
+  name: "",
+  title: "",
+  city: cities[0],
+  district: taiwanDistricts[cities[0]][0],
+  address: "",
+  category: categories[0],
+  img: "",
+};
+
+export function PostModal({
+  isOpen,
+  onClose,
+  onCreatePost,
+}: PostModalProps) {
+  const [form, setForm] = useState<CreatePostInput>(initialFormState);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [localPreviewUrl, setLocalPreviewUrl] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!selectedFile) {
+      setLocalPreviewUrl("");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(selectedFile);
+    setLocalPreviewUrl(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [selectedFile]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  function updateField(field: keyof CreatePostInput, value: string) {
+    setForm((currentForm) => {
+      if (field === "city") {
+        const city = value as TaiwanCity;
+
+        return {
+          ...currentForm,
+          city,
+          district: taiwanDistricts[city][0],
+        };
+      }
+
+      return {
+        ...currentForm,
+        [field]: value,
+      };
+    });
+  }
+
+  function resetForm() {
+    setForm(initialFormState);
+    setSelectedFile(null);
+    setLocalPreviewUrl("");
+    setErrorMessage("");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  function handleImageFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+
+    if (!ALLOWED_POST_IMAGE_TYPES.includes(file.type)) {
+      setErrorMessage("圖片格式僅支援 JPG、PNG 或 WebP");
+      setSelectedFile(null);
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_POST_IMAGE_SIZE_BYTES) {
+      setErrorMessage("圖片大小不可超過 5MB");
+      setSelectedFile(null);
+      event.target.value = "";
+      return;
+    }
+
+    setErrorMessage("");
+    setSelectedFile(file);
+  }
+
+  function validateForm(): string | null {
+    if (!form.name.trim()) {
+      return "請填寫店家名稱";
+    }
+
+    if (!form.title.trim()) {
+      return "請填寫吸睛標題";
+    }
+
+    if (!form.city.trim()) {
+      return "請選擇縣市";
+    }
+
+    if (!form.district.trim()) {
+      return "請選擇行政區";
+    }
+
+    if (!form.address.trim()) {
+      return "請填寫完整地址";
+    }
+
+    return null;
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const validationError = validateForm();
+
+    if (validationError) {
+      setErrorMessage(validationError);
+      return;
+    }
+
+    setErrorMessage("");
+    setIsSubmitting(true);
+
+    try {
+      const finalImageUrl = selectedFile
+        ? await uploadPostImage(selectedFile)
+        : form.img?.trim() || "/placeholder-food.jpg";
+
+      await onCreatePost({
+        name: form.name.trim(),
+        title: form.title.trim(),
+        city: form.city.trim(),
+        district: form.district.trim(),
+        address: form.address.trim(),
+        category: form.category?.trim(),
+        img: finalImageUrl,
+      });
+      resetForm();
+      onClose();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "新增情報失敗，請稍後再試",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  const selectedCity = form.city as TaiwanCity;
+  const districts = taiwanDistricts[selectedCity] ?? taiwanDistricts[cities[0]];
+  const previewUrl = localPreviewUrl || form.img?.trim();
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-stone-950/50 px-4 py-8">
+      <div className="max-h-full w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-stone-200 px-5 py-4">
+          <div>
+            <h2 className="text-xl font-bold text-stone-950">發佈美食情報</h2>
+            <p className="mt-1 text-sm text-stone-500">
+              新增後會寫入 Supabase；未設定環境變數時會顯示錯誤。
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              resetForm();
+              onClose();
+            }}
+            className="rounded-md px-3 py-2 text-sm text-stone-500 hover:bg-stone-100"
+          >
+            關閉
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5 p-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-medium text-stone-700">
+              店家名稱
+              <input
+                name="name"
+                type="text"
+                value={form.name}
+                onChange={(event) => updateField("name", event.target.value)}
+                className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
+                placeholder="例：阿春炸物"
+              />
+            </label>
+
+            <label className="block text-sm font-medium text-stone-700">
+              吸睛標題
+              <input
+                name="title"
+                type="text"
+                value={form.title}
+                onChange={(event) => updateField("title", event.target.value)}
+                className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
+                placeholder="例：今日限定雞排買一送一"
+              />
+            </label>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <label className="block text-sm font-medium text-stone-700">
+              縣市
+              <select
+                name="city"
+                className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
+                value={form.city}
+                onChange={(event) => updateField("city", event.target.value)}
+              >
+                {cities.map((city) => (
+                  <option key={city} value={city}>
+                    {city}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm font-medium text-stone-700">
+              行政區
+              <select
+                name="district"
+                className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
+                value={form.district}
+                onChange={(event) =>
+                  updateField("district", event.target.value)
+                }
+              >
+                {districts.map((district) => (
+                  <option key={district} value={district}>
+                    {district}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm font-medium text-stone-700">
+              類別
+              <select
+                name="category"
+                className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
+                value={form.category}
+                onChange={(event) =>
+                  updateField("category", event.target.value)
+                }
+              >
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <label className="block text-sm font-medium text-stone-700">
+            地址
+            <input
+              name="address"
+              type="text"
+              value={form.address}
+              onChange={(event) => updateField("address", event.target.value)}
+              className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
+              placeholder="例：台北市大安區..."
+            />
+          </label>
+
+          <label className="block text-sm font-medium text-stone-700">
+            圖片 URL
+            <input
+              name="img"
+              type="url"
+              value={form.img}
+              onChange={(event) => updateField("img", event.target.value)}
+              className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
+              placeholder="https://..."
+            />
+          </label>
+
+          <label className="block text-sm font-medium text-stone-700">
+            上傳本機圖片
+            <input
+              ref={fileInputRef}
+              name="imageFile"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleImageFileChange}
+              className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-stone-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-stone-700 hover:file:bg-stone-200"
+            />
+            <span className="mt-1 block text-xs font-normal text-stone-500">
+              支援 JPG、PNG、WebP，最大 5MB。若選擇本機圖片，會優先使用上傳圖片。
+            </span>
+          </label>
+
+          {previewUrl ? (
+            <div className="overflow-hidden rounded-lg border border-stone-200 bg-stone-50">
+              <img
+                src={previewUrl}
+                alt="圖片預覽"
+                className="h-48 w-full object-cover"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+            </div>
+          ) : null}
+
+          {errorMessage ? (
+            <p className="rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+              {errorMessage}
+            </p>
+          ) : null}
+
+          <div className="flex justify-end gap-3 border-t border-stone-200 pt-5">
+            <button
+              type="button"
+              onClick={() => {
+                resetForm();
+                onClose();
+              }}
+              className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
+            >
+              關閉
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-stone-400"
+            >
+              {isSubmitting ? "送出中" : "送出"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
