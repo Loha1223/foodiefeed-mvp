@@ -80,7 +80,10 @@ export function AdminPanel({
 
           {!isAuthLoading && !currentUser && isMineMode ? (
             <div className="bg-stone-50 px-4 py-10 text-center text-sm text-stone-500">
-              請先登入後管理自己的投稿
+              <p>請先登入後管理自己的投稿</p>
+              <p className="mt-1 text-xs text-stone-400">
+                登入後可查看與管理你已發佈的情報。
+              </p>
             </div>
           ) : null}
 
@@ -113,7 +116,12 @@ export function AdminPanel({
           !error &&
           visiblePosts.length === 0 ? (
             <div className="bg-stone-50 px-4 py-10 text-center text-sm text-stone-500">
-              {emptyLabel}
+              <p>{emptyLabel}</p>
+              <p className="mt-1 text-xs text-stone-400">
+                {isMineMode
+                  ? "你可以先發佈第一篇情報，之後會顯示在這裡。"
+                  : "目前沒有可管理資料，可稍後重新整理。"}
+              </p>
             </div>
           ) : null}
 

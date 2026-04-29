@@ -5,6 +5,7 @@ import type { FeedFilterState, FeedSortOption } from "@/types/foodie";
 
 type FilterBarProps = {
   filter: FeedFilterState;
+  isLoading?: boolean;
   totalCount: number;
   filteredCount: number;
   onKeywordChange: (value: string) => void;
@@ -36,6 +37,7 @@ const cityOptions = Object.keys(taiwanDistricts);
 
 export function FilterBar({
   filter,
+  isLoading = false,
   totalCount,
   filteredCount,
   onKeywordChange,
@@ -57,6 +59,9 @@ export function FilterBar({
           <p className="mt-1 text-lg font-semibold text-stone-900">
             共 {totalCount} 筆，篩選後 {filteredCount} 筆
           </p>
+          {isLoading ? (
+            <p className="mt-1 text-xs text-stone-500">情報載入中，請稍候...</p>
+          ) : null}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -66,8 +71,9 @@ export function FilterBar({
               type="text"
               value={filter.keyword}
               onChange={(event) => onKeywordChange(event.target.value)}
+              disabled={isLoading}
               placeholder="搜尋標題、店名、地址、地區"
-              className="mt-1.5 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-red-500"
+              className="mt-1.5 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-red-500 disabled:cursor-not-allowed disabled:bg-stone-100"
             />
           </label>
 
@@ -78,7 +84,8 @@ export function FilterBar({
               onChange={(event) =>
                 onCategoryChange(event.target.value as FeedFilterState["category"])
               }
-              className="mt-1.5 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-red-500"
+              disabled={isLoading}
+              className="mt-1.5 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-red-500 disabled:cursor-not-allowed disabled:bg-stone-100"
             >
               {categoryOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -93,7 +100,8 @@ export function FilterBar({
             <select
               value={filter.city}
               onChange={(event) => onCityChange(event.target.value)}
-              className="mt-1.5 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-red-500"
+              disabled={isLoading}
+              className="mt-1.5 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-red-500 disabled:cursor-not-allowed disabled:bg-stone-100"
             >
               <option value="">全部縣市</option>
               {cityOptions.map((city) => (
@@ -109,7 +117,7 @@ export function FilterBar({
             <select
               value={filter.district}
               onChange={(event) => onDistrictChange(event.target.value)}
-              disabled={!filter.city}
+              disabled={isLoading || !filter.city}
               className="mt-1.5 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-red-500 disabled:cursor-not-allowed disabled:bg-stone-100"
             >
               <option value="">全部行政區</option>
@@ -126,7 +134,8 @@ export function FilterBar({
             <select
               value={filter.sortBy}
               onChange={(event) => onSortChange(event.target.value as FeedSortOption)}
-              className="mt-1.5 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-red-500"
+              disabled={isLoading}
+              className="mt-1.5 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-red-500 disabled:cursor-not-allowed disabled:bg-stone-100"
             >
               {sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -140,7 +149,8 @@ export function FilterBar({
             <button
               type="button"
               onClick={onReset}
-              className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
+              disabled={isLoading}
+              className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-400"
             >
               清除篩選
             </button>

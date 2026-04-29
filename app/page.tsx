@@ -109,6 +109,7 @@ function HomeContent() {
   const [feedPosts, setFeedPosts] = useState<Post[]>(initialPosts);
   const [myPosts, setMyPosts] = useState<Post[]>([]);
   const [adminPosts, setAdminPosts] = useState<Post[]>([]);
+  const [isFeedLoading, setIsFeedLoading] = useState(true);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [isMyPostsOpen, setIsMyPostsOpen] = useState(false);
@@ -186,6 +187,8 @@ function HomeContent() {
 
   useEffect(() => {
     async function loadPosts() {
+      setIsFeedLoading(true);
+
       try {
         const activePosts = await fetchActivePosts();
         setFeedPosts(activePosts);
@@ -193,6 +196,8 @@ function HomeContent() {
         console.warn(
           error instanceof Error ? error.message : "Failed to fetch posts",
         );
+      } finally {
+        setIsFeedLoading(false);
       }
     }
 
@@ -521,6 +526,7 @@ function HomeContent() {
       />
       <FilterBar
         filter={feedFilter}
+        isLoading={isFeedLoading}
         totalCount={feedPosts.length}
         filteredCount={filteredFeedPosts.length}
         onKeywordChange={(value) =>
@@ -546,6 +552,7 @@ function HomeContent() {
         onReset={handleResetFeedFilter}
       />
       <MasonryGrid
+        isLoading={isFeedLoading}
         posts={filteredFeedPosts}
         onPostClick={handlePostClick}
         onPostLike={handleLike}
