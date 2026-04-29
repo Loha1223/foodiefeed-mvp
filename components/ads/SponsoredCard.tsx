@@ -1,6 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  getOrCreateAdSessionId,
+  trackAdClick,
+  trackAdImpression,
+} from "@/lib/ads";
 import type { SponsoredPost } from "@/types/foodie";
 
 type SponsoredCardProps = {
@@ -9,10 +14,75 @@ type SponsoredCardProps = {
 
 export function SponsoredCard({ sponsoredPost }: SponsoredCardProps) {
   const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const cardRef = useRef<HTMLElement | null>(null);
+  const hasTrackedImpressionRef = useRef(false);
   const imageUrl = sponsoredPost.image_url || "/placeholder-food.jpg";
 
+  function getPagePath() {
+    return typeof window === "undefined" ? undefined : window.location.pathname;
+  }
+
+  function buildTrackingInput() {
+    return {
+      adId: sponsoredPost.id,
+      placement: sponsoredPost.placement || "feed",
+      pagePath: getPagePath(),
+      sessionId: getOrCreateAdSessionId(),
+    };
+  }
+
+  function trackImpressionOnce() {
+    if (hasTrackedImpressionRef.current) {
+      return;
+    }
+
+    hasTrackedImpressionRef.current = true;
+    void trackAdImpression(buildTrackingInput());
+  }
+
+  useEffect(() => {
+    hasTrackedImpressionRef.current = false;
+
+    const cardElement = cardRef.current;
+
+    if (!cardElement) {
+      return;
+    }
+
+    if (typeof IntersectionObserver === "undefined") {
+      trackImpressionOnce();
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+
+        if (entry?.isIntersecting) {
+          trackImpressionOnce();
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.5 },
+    );
+
+    observer.observe(cardElement);
+
+    return () => observer.disconnect();
+  }, [sponsoredPost.id]);
+
+  function handleCtaClick() {
+    void trackAdClick({
+      ...buildTrackingInput(),
+      targetUrl: sponsoredPost.target_url ?? undefined,
+    });
+  }
+
   return (
-    <aside className="overflow-hidden rounded-lg border border-amber-200 bg-amber-50 shadow-sm">
+    <aside
+      ref={cardRef}
+      className="overflow-hidden rounded-lg border border-amber-200 bg-amber-50 shadow-sm"
+    >
       <div className="group relative overflow-hidden bg-amber-100">
         {!isImageLoaded ? (
           <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-amber-100 to-stone-200" />
@@ -55,6 +125,7 @@ export function SponsoredCard({ sponsoredPost }: SponsoredCardProps) {
               href={sponsoredPost.target_url}
               target="_blank"
               rel="noreferrer"
+              onClick={handleCtaClick}
               className="inline-flex rounded-md bg-stone-950 px-3 py-2 text-sm font-semibold text-white transition hover:bg-stone-800"
             >
               查看活動

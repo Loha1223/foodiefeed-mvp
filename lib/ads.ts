@@ -1,5 +1,8 @@
 import { getSupabaseClient } from "@/lib/supabaseClient";
+import { getCurrentUser } from "@/lib/auth";
 import type { SponsoredPost } from "@/types/foodie";
+
+const AD_SESSION_STORAGE_KEY = "foodiefeed_ad_session_id";
 
 type SponsoredPostRow = {
   id: number;
@@ -23,6 +26,18 @@ type SponsoredPostFilters = {
   city?: string;
   district?: string;
   category?: string;
+};
+
+type TrackAdImpressionInput = {
+  adId: number;
+  placement?: string;
+  pagePath?: string;
+  sessionId?: string;
+  metadata?: Record<string, unknown>;
+};
+
+type TrackAdClickInput = TrackAdImpressionInput & {
+  targetUrl?: string;
 };
 
 function toSponsoredPost(row: SponsoredPostRow): SponsoredPost {
@@ -97,4 +112,96 @@ export async function fetchActiveSponsoredPosts(
   }
 
   return ((data ?? []) as SponsoredPostRow[]).map(toSponsoredPost);
+}
+
+async function getTrackingUserId(): Promise<string | null> {
+  try {
+    const user = await getCurrentUser();
+    return user?.id ?? null;
+  } catch (error) {
+    console.warn(
+      error instanceof Error
+        ? `Failed to resolve ad tracking user: ${error.message}`
+        : "Failed to resolve ad tracking user",
+    );
+    return null;
+  }
+}
+
+export function getOrCreateAdSessionId(): string | undefined {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  try {
+    const existingSessionId = window.localStorage.getItem(
+      AD_SESSION_STORAGE_KEY,
+    );
+
+    if (existingSessionId) {
+      return existingSessionId;
+    }
+
+    const sessionId = `ad_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2)}`;
+    window.localStorage.setItem(AD_SESSION_STORAGE_KEY, sessionId);
+    return sessionId;
+  } catch (error) {
+    console.warn(
+      error instanceof Error
+        ? `Failed to access ad session storage: ${error.message}`
+        : "Failed to access ad session storage",
+    );
+    return undefined;
+  }
+}
+
+export async function trackAdImpression(
+  input: TrackAdImpressionInput,
+): Promise<void> {
+  const supabase = getSupabaseClient();
+
+  if (!supabase) {
+    console.warn("Supabase env is not configured");
+    return;
+  }
+
+  const userId = await getTrackingUserId();
+  const { error } = await supabase.from("ad_impressions").insert({
+    ad_id: input.adId,
+    placement: input.placement ?? "feed",
+    page_path: input.pagePath,
+    user_id: userId,
+    session_id: input.sessionId,
+    metadata: input.metadata ?? {},
+  });
+
+  if (error) {
+    console.warn(`Failed to track ad impression: ${error.message}`);
+  }
+}
+
+export async function trackAdClick(input: TrackAdClickInput): Promise<void> {
+  const supabase = getSupabaseClient();
+
+  if (!supabase) {
+    console.warn("Supabase env is not configured");
+    return;
+  }
+
+  const userId = await getTrackingUserId();
+  const { error } = await supabase.from("ad_clicks").insert({
+    ad_id: input.adId,
+    placement: input.placement ?? "feed",
+    page_path: input.pagePath,
+    target_url: input.targetUrl,
+    user_id: userId,
+    session_id: input.sessionId,
+    metadata: input.metadata ?? {},
+  });
+
+  if (error) {
+    console.warn(`Failed to track ad click: ${error.message}`);
+  }
 }

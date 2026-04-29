@@ -64,6 +64,10 @@ supabase/migrations/20260429045000_extend_management_select_policies.sql
 supabase/migrations/20260429046000_create_sponsored_posts.sql
 ```
 
+```txt
+supabase/migrations/20260429047000_create_ad_tracking_tables.sql
+```
+
 可選：加入測試資料：
 
 ```txt
@@ -159,7 +163,7 @@ supabase/migrations/20260429045000_extend_management_select_policies.sql
 
 ### Sponsored Posts 廣告卡 MVP
 
-本階段新增自營廣告版位，不接 Google AdSense、不做付款、不做點擊追蹤，也還沒有廣告後台。
+本階段新增自營廣告版位，不接 Google AdSense、不做付款，也還沒有完整廣告後台。
 
 資料表：
 
@@ -197,6 +201,61 @@ RLS：
 7. 若要區域或類別投放，填入對應的 `city`、`district` 或 `category`。
 
 Feed 會在每 6 張自然情報卡後插入 1 張 SponsoredCard。每筆廣告最多顯示一次，不會在同一批 feed 中循環重複曝光。廣告卡會清楚標示「贊助」，並使用與 PostCard 不同的視覺樣式，避免偽裝成自然情報。
+
+### Sponsored Ads 曝光 / 點擊追蹤 MVP
+
+廣告追蹤使用兩張資料表：
+
+```txt
+ad_impressions
+ad_clicks
+```
+
+追蹤行為：
+
+- SponsoredCard 進入畫面約 50% 時，會寫入一筆 `ad_impressions`。
+- 同一張 SponsoredCard 在一次 mount 期間只記錄一次曝光。
+- 使用者點擊「查看活動」時，會寫入一筆 `ad_clicks`。
+- 匿名使用者也可記錄曝光 / 點擊，`user_id` 會是 `null`。
+- 登入使用者會盡量寫入 `user_id`。
+- `session_id` 儲存在 browser `localStorage` 的 `foodiefeed_ad_session_id`。
+- 追蹤失敗只會 `console.warn`，不會顯示使用者錯誤，也不會阻擋廣告顯示或新分頁跳轉。
+
+RLS：
+
+- public / anon / authenticated 可以 insert `ad_impressions`。
+- public / anon / authenticated 可以 insert `ad_clicks`。
+- public 不可 select `ad_impressions` / `ad_clicks`。
+- admin 可以 select / delete `ad_impressions`。
+- admin 可以 select / delete `ad_clicks`。
+- 一般 authenticated user 不可讀取追蹤資料。
+
+查看廣告成效：
+
+1. 開啟 Supabase Dashboard -> Table Editor。
+2. 查看 `ad_impressions` 的曝光資料。
+3. 查看 `ad_clicks` 的點擊資料。
+
+粗略 CTR 查詢：
+
+```sql
+select
+  sp.id,
+  sp.title,
+  count(distinct ai.id) as impressions,
+  count(distinct ac.id) as clicks,
+  case
+    when count(distinct ai.id) = 0 then 0
+    else round((count(distinct ac.id)::numeric / count(distinct ai.id)::numeric) * 100, 2)
+  end as ctr_percent
+from sponsored_posts sp
+left join ad_impressions ai on ai.ad_id = sp.id
+left join ad_clicks ac on ac.ad_id = sp.id
+group by sp.id, sp.title
+order by sp.id desc;
+```
+
+本階段仍不做付款、完整廣告後台、曝光去重、點擊防灌或正式報表。
 
 ### Supabase Storage
 
@@ -287,6 +346,9 @@ npm run dev
 30. 在 `sponsored_posts` 新增 active feed 廣告，確認首頁每 6 張自然情報後插入 1 張標示「贊助」的廣告卡。
 31. 設定廣告 `city` / `district` / `category` 後，確認 Feed 篩選條件符合時才顯示。
 32. 設定 `target_url` 後，確認「查看活動」會以新分頁開啟。
+33. 廣告卡進入畫面後，確認 `ad_impressions` 新增資料。
+34. 點擊「查看活動」後，確認 `ad_clicks` 新增資料。
+35. 確認一般 public user 無法讀取 `ad_impressions` / `ad_clicks`，admin 才能查看。
 
 ## 驗證指令
 
