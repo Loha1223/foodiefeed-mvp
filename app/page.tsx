@@ -104,6 +104,41 @@ function createMockPosts(): Post[] {
   ];
 }
 
+function matchesCurrentFeedFilter(post: Post, filter: FeedFilterState): boolean {
+  const keyword = filter.keyword.trim().toLowerCase();
+
+  if (keyword) {
+    const searchable = [
+      post.title,
+      post.name,
+      post.address,
+      post.city,
+      post.district,
+      post.category,
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    if (!searchable.includes(keyword)) {
+      return false;
+    }
+  }
+
+  if (filter.category !== "all" && post.category !== filter.category) {
+    return false;
+  }
+
+  if (filter.city && post.city !== filter.city) {
+    return false;
+  }
+
+  if (filter.district && post.district !== filter.district) {
+    return false;
+  }
+
+  return true;
+}
+
 function HomeContent() {
   const initialPosts = useMemo(() => createMockPosts(), []);
   const [feedPosts, setFeedPosts] = useState<Post[]>(initialPosts);
@@ -129,39 +164,9 @@ function HomeContent() {
   const { toast, showToast, closeToast } = useToast();
 
   const filteredFeedPosts = useMemo(() => {
-    const keyword = feedFilter.keyword.trim().toLowerCase();
-    const filtered = feedPosts.filter((post) => {
-      if (keyword) {
-        const searchable = [
-          post.title,
-          post.name,
-          post.address,
-          post.city,
-          post.district,
-          post.category,
-        ]
-          .join(" ")
-          .toLowerCase();
-
-        if (!searchable.includes(keyword)) {
-          return false;
-        }
-      }
-
-      if (feedFilter.category !== "all" && post.category !== feedFilter.category) {
-        return false;
-      }
-
-      if (feedFilter.city && post.city !== feedFilter.city) {
-        return false;
-      }
-
-      if (feedFilter.district && post.district !== feedFilter.district) {
-        return false;
-      }
-
-      return true;
-    });
+    const filtered = feedPosts.filter((post) =>
+      matchesCurrentFeedFilter(post, feedFilter),
+    );
 
     const sorted = [...filtered];
     sorted.sort((a, b) => {
@@ -361,9 +366,13 @@ function HomeContent() {
       }
 
       showToast({
-        variant: "success",
+        variant: matchesCurrentFeedFilter(postWithCommentCount, feedFilter)
+          ? "success"
+          : "info",
         title: "發佈成功",
-        message: "情報已發佈。",
+        message: matchesCurrentFeedFilter(postWithCommentCount, feedFilter)
+          ? "情報已發佈。"
+          : "情報已發佈，但目前搜尋或篩選條件可能未顯示此貼文。",
       });
     } catch (error) {
       throw error;

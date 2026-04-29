@@ -53,19 +53,24 @@ export function PostModal({
   const [form, setForm] = useState<CreatePostInput>(initialFormState);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [localPreviewUrl, setLocalPreviewUrl] = useState("");
+  const [isPreviewLoadFailed, setIsPreviewLoadFailed] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isSubmittingPost, setIsSubmittingPost] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previousBodyOverflowRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!selectedFile) {
       setLocalPreviewUrl("");
+      setIsPreviewLoadFailed(false);
       return;
     }
 
     const objectUrl = URL.createObjectURL(selectedFile);
     setLocalPreviewUrl(objectUrl);
+    setIsPreviewLoadFailed(false);
 
     return () => {
       URL.revokeObjectURL(objectUrl);
@@ -137,7 +142,10 @@ export function PostModal({
     setForm(initialFormState);
     setSelectedFile(null);
     setLocalPreviewUrl("");
+    setIsPreviewLoadFailed(false);
     setErrorMessage("");
+    setIsUploadingImage(false);
+    setIsSubmittingPost(false);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -168,6 +176,7 @@ export function PostModal({
 
     setErrorMessage("");
     setSelectedFile(file);
+    setIsPreviewLoadFailed(false);
   }
 
   function validateForm(): string | null {
@@ -206,11 +215,19 @@ export function PostModal({
 
     setErrorMessage("");
     setIsSubmitting(true);
+    setIsUploadingImage(false);
+    setIsSubmittingPost(false);
 
     try {
-      const finalImageUrl = selectedFile
-        ? await uploadPostImage(selectedFile)
-        : form.img?.trim() || "/placeholder-food.jpg";
+      let finalImageUrl = form.img?.trim() || "/placeholder-food.jpg";
+
+      if (selectedFile) {
+        setIsUploadingImage(true);
+        finalImageUrl = await uploadPostImage(selectedFile);
+        setIsUploadingImage(false);
+      }
+
+      setIsSubmittingPost(true);
 
       await onCreatePost({
         name: form.name.trim(),
@@ -232,6 +249,8 @@ export function PostModal({
         message,
       });
     } finally {
+      setIsUploadingImage(false);
+      setIsSubmittingPost(false);
       setIsSubmitting(false);
     }
   }
@@ -239,6 +258,11 @@ export function PostModal({
   const selectedCity = form.city as TaiwanCity;
   const districts = taiwanDistricts[selectedCity] ?? taiwanDistricts[cities[0]];
   const previewUrl = localPreviewUrl || form.img?.trim();
+  const imageSourceLabel = selectedFile
+    ? "本機圖片"
+    : form.img?.trim()
+      ? "圖片 URL"
+      : "預設圖片";
 
   return (
     <div
@@ -265,136 +289,180 @@ export function PostModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5 p-5">
-          <div className="grid gap-4 sm:grid-cols-2">
+        <form onSubmit={handleSubmit} className="space-y-6 p-4 sm:p-5">
+          <section className="space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-stone-900">基本情報</h3>
+              <p className="mt-1 text-xs text-stone-500">先填寫店家與情報標題。</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm font-medium text-stone-700">
+                店家名稱
+                <input
+                  name="name"
+                  type="text"
+                  value={form.name}
+                  onChange={(event) => updateField("name", event.target.value)}
+                  className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
+                  placeholder="例：阿春炸物"
+                />
+              </label>
+
+              <label className="block text-sm font-medium text-stone-700">
+                吸睛標題
+                <input
+                  name="title"
+                  type="text"
+                  value={form.title}
+                  onChange={(event) => updateField("title", event.target.value)}
+                  className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
+                  placeholder="例：今日限定雞排買一送一"
+                />
+              </label>
+            </div>
+          </section>
+
+          <section className="space-y-4 border-t border-stone-200 pt-5">
+            <div>
+              <h3 className="text-sm font-semibold text-stone-900">地點與分類</h3>
+              <p className="mt-1 text-xs text-stone-500">
+                讓大家更快找到正確地點與類型。
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <label className="block text-sm font-medium text-stone-700">
+                縣市
+                <select
+                  name="city"
+                  className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
+                  value={form.city}
+                  onChange={(event) => updateField("city", event.target.value)}
+                >
+                  {cities.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-sm font-medium text-stone-700">
+                行政區
+                <select
+                  name="district"
+                  className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
+                  value={form.district}
+                  onChange={(event) =>
+                    updateField("district", event.target.value)
+                  }
+                >
+                  {districts.map((district) => (
+                    <option key={district} value={district}>
+                      {district}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-sm font-medium text-stone-700">
+                類別
+                <select
+                  name="category"
+                  className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
+                  value={form.category}
+                  onChange={(event) =>
+                    updateField("category", event.target.value)
+                  }
+                >
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
             <label className="block text-sm font-medium text-stone-700">
-              店家名稱
+              地址
               <input
-                name="name"
+                name="address"
                 type="text"
-                value={form.name}
-                onChange={(event) => updateField("name", event.target.value)}
+                value={form.address}
+                onChange={(event) => updateField("address", event.target.value)}
                 className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
-                placeholder="例：阿春炸物"
+                placeholder="例：台北市大安區..."
               />
             </label>
+          </section>
+
+          <section className="space-y-4 border-t border-stone-200 pt-5">
+            <div>
+              <h3 className="text-sm font-semibold text-stone-900">圖片來源</h3>
+              <p className="mt-1 text-xs text-stone-500">
+                目前使用：{imageSourceLabel}
+                {selectedFile ? "（本機圖片優先）" : ""}
+              </p>
+            </div>
 
             <label className="block text-sm font-medium text-stone-700">
-              吸睛標題
+              圖片 URL
               <input
-                name="title"
-                type="text"
-                value={form.title}
-                onChange={(event) => updateField("title", event.target.value)}
+                name="img"
+                type="url"
+                value={form.img}
+                onChange={(event) => {
+                  updateField("img", event.target.value);
+                  setIsPreviewLoadFailed(false);
+                }}
                 className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
-                placeholder="例：今日限定雞排買一送一"
+                placeholder="https://..."
               />
-            </label>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <label className="block text-sm font-medium text-stone-700">
-              縣市
-              <select
-                name="city"
-                className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
-                value={form.city}
-                onChange={(event) => updateField("city", event.target.value)}
-              >
-                {cities.map((city) => (
-                  <option key={city} value={city}>
-                    {city}
-                  </option>
-                ))}
-              </select>
+              {selectedFile ? (
+                <span className="mt-1 block text-xs font-normal text-amber-700">
+                  已選擇本機圖片，送出時會優先使用本機圖片。
+                </span>
+              ) : null}
             </label>
 
             <label className="block text-sm font-medium text-stone-700">
-              行政區
-              <select
-                name="district"
-                className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
-                value={form.district}
-                onChange={(event) =>
-                  updateField("district", event.target.value)
-                }
-              >
-                {districts.map((district) => (
-                  <option key={district} value={district}>
-                    {district}
-                  </option>
-                ))}
-              </select>
+              上傳本機圖片
+              <input
+                ref={fileInputRef}
+                name="imageFile"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleImageFileChange}
+                className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-stone-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-stone-700 hover:file:bg-stone-200"
+              />
+              <span className="mt-1 block text-xs font-normal text-stone-500">
+                支援 JPG、PNG、WebP，最大 5MB。若選擇本機圖片，會優先使用上傳圖片。
+              </span>
             </label>
-
-            <label className="block text-sm font-medium text-stone-700">
-              類別
-              <select
-                name="category"
-                className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
-                value={form.category}
-                onChange={(event) =>
-                  updateField("category", event.target.value)
-                }
-              >
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <label className="block text-sm font-medium text-stone-700">
-            地址
-            <input
-              name="address"
-              type="text"
-              value={form.address}
-              onChange={(event) => updateField("address", event.target.value)}
-              className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
-              placeholder="例：台北市大安區..."
-            />
-          </label>
-
-          <label className="block text-sm font-medium text-stone-700">
-            圖片 URL
-            <input
-              name="img"
-              type="url"
-              value={form.img}
-              onChange={(event) => updateField("img", event.target.value)}
-              className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
-              placeholder="https://..."
-            />
-          </label>
-
-          <label className="block text-sm font-medium text-stone-700">
-            上傳本機圖片
-            <input
-              ref={fileInputRef}
-              name="imageFile"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleImageFileChange}
-              className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-stone-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-stone-700 hover:file:bg-stone-200"
-            />
-            <span className="mt-1 block text-xs font-normal text-stone-500">
-              支援 JPG、PNG、WebP，最大 5MB。若選擇本機圖片，會優先使用上傳圖片。
-            </span>
-          </label>
+          </section>
 
           {previewUrl ? (
-            <div className="overflow-hidden rounded-lg border border-stone-200 bg-stone-50">
+            <div className="space-y-2 overflow-hidden rounded-lg border border-stone-200 bg-stone-50 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-stone-700">圖片預覽</p>
+                <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-stone-600 ring-1 ring-stone-200">
+                  {imageSourceLabel}
+                </span>
+              </div>
               <img
                 src={previewUrl}
                 alt="圖片預覽"
-                className="h-48 w-full object-cover"
+                className="h-48 w-full rounded-md object-cover"
                 onError={(event) => {
-                  event.currentTarget.style.display = "none";
+                  setIsPreviewLoadFailed(true);
+                  event.currentTarget.src = "/placeholder-food.jpg";
                 }}
               />
+              {isPreviewLoadFailed && !selectedFile ? (
+                <p className="text-xs text-amber-700">
+                  目前無法載入此 URL 預覽，仍可送出，卡片會自動 fallback 顯示預設圖片。
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -417,7 +485,13 @@ export function PostModal({
               disabled={isSubmitting}
               className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-stone-400"
             >
-              {isSubmitting ? "送出中..." : "送出"}
+              {isUploadingImage
+                ? "圖片上傳中..."
+                : isSubmittingPost
+                  ? "發佈中..."
+                  : isSubmitting
+                    ? "送出中..."
+                    : "送出"}
             </button>
           </div>
         </form>
