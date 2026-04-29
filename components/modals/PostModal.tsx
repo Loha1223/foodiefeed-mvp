@@ -56,6 +56,7 @@ export function PostModal({
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previousBodyOverflowRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!selectedFile) {
@@ -71,8 +72,46 @@ export function PostModal({
     };
   }, [selectedFile]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    previousBodyOverflowRef.current = previousOverflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflowRef.current ?? "";
+      previousBodyOverflowRef.current = null;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        resetForm();
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) {
     return null;
+  }
+
+  function handleCloseModal() {
+    resetForm();
+    onClose();
   }
 
   function updateField(field: keyof CreatePostInput, value: string) {
@@ -202,8 +241,14 @@ export function PostModal({
   const previewUrl = localPreviewUrl || form.img?.trim();
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-stone-950/50 px-4 py-8">
-      <div className="max-h-full w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl">
+    <div
+      className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-stone-950/50 px-3 py-4 sm:items-center sm:px-4 sm:py-8"
+      onClick={handleCloseModal}
+    >
+      <div
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl sm:max-h-full"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b border-stone-200 px-5 py-4">
           <div>
             <h2 className="text-xl font-bold text-stone-950">發佈美食情報</h2>
@@ -213,10 +258,7 @@ export function PostModal({
           </div>
           <button
             type="button"
-            onClick={() => {
-              resetForm();
-              onClose();
-            }}
+            onClick={handleCloseModal}
             className="rounded-md px-3 py-2 text-sm text-stone-500 hover:bg-stone-100"
           >
             關閉
@@ -365,10 +407,7 @@ export function PostModal({
           <div className="flex justify-end gap-3 border-t border-stone-200 pt-5">
             <button
               type="button"
-              onClick={() => {
-                resetForm();
-                onClose();
-              }}
+              onClick={handleCloseModal}
               className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
             >
               關閉

@@ -17,7 +17,7 @@ export function MasonryGrid({
   if (posts.length === 0) {
     return (
       <section className="mx-auto max-w-6xl px-4 py-12 text-center sm:px-6">
-        <div className="rounded-lg border border-dashed border-stone-300 bg-white px-6 py-12 text-stone-500">
+        <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50 px-6 py-12 text-stone-500">
           目前沒有符合條件的美食情報
         </div>
       </section>

@@ -73,19 +73,19 @@ export function AdminPanel({
           </div>
 
           {isAuthLoading ? (
-            <div className="bg-stone-50 px-4 py-8 text-center text-sm text-stone-500">
+            <div className="bg-stone-50 px-4 py-10 text-center text-sm text-stone-500">
               載入中...
             </div>
           ) : null}
 
           {!isAuthLoading && !currentUser && isMineMode ? (
-            <div className="bg-stone-50 px-4 py-8 text-center text-sm text-stone-500">
+            <div className="bg-stone-50 px-4 py-10 text-center text-sm text-stone-500">
               請先登入後管理自己的投稿
             </div>
           ) : null}
 
           {!isAuthLoading && mode === "admin" && !isAdmin ? (
-            <div className="bg-stone-50 px-4 py-8 text-center text-sm text-stone-500">
+            <div className="bg-stone-50 px-4 py-10 text-center text-sm text-stone-500">
               你沒有管理員權限
             </div>
           ) : null}
@@ -93,7 +93,7 @@ export function AdminPanel({
           {!isAuthLoading &&
           ((isMineMode && currentUser) || (mode === "admin" && isAdmin)) &&
           isLoading ? (
-            <div className="bg-stone-50 px-4 py-8 text-center text-sm text-stone-500">
+            <div className="bg-stone-50 px-4 py-10 text-center text-sm text-stone-500">
               {loadingLabel}
             </div>
           ) : null}
@@ -102,7 +102,7 @@ export function AdminPanel({
           ((isMineMode && currentUser) || (mode === "admin" && isAdmin)) &&
           !isLoading &&
           error ? (
-            <div className="bg-red-50 px-4 py-8 text-center text-sm text-red-700">
+            <div className="border-y border-red-100 bg-red-50 px-4 py-10 text-center text-sm text-red-700">
               {error}
             </div>
           ) : null}
@@ -112,7 +112,7 @@ export function AdminPanel({
           !isLoading &&
           !error &&
           visiblePosts.length === 0 ? (
-            <div className="bg-stone-50 px-4 py-8 text-center text-sm text-stone-500">
+            <div className="bg-stone-50 px-4 py-10 text-center text-sm text-stone-500">
               {emptyLabel}
             </div>
           ) : null}

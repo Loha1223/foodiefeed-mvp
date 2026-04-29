@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Comment, Post } from "@/types/foodie";
 import {
   createComment,
@@ -31,6 +31,7 @@ export function DetailModal({
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [formError, setFormError] = useState("");
+  const previousBodyOverflowRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !postId) {
@@ -69,6 +70,38 @@ export function DetailModal({
       isCancelled = true;
     };
   }, [isOpen, postId]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    previousBodyOverflowRef.current = previousOverflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflowRef.current ?? "";
+      previousBodyOverflowRef.current = null;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   async function handleCommentSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -117,13 +150,19 @@ export function DetailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-stone-950/50 px-4 py-8">
-      <div className="max-h-full w-full max-w-3xl overflow-y-auto rounded-lg bg-white shadow-xl">
+    <div
+      className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-stone-950/50 px-3 py-4 sm:items-center sm:px-4 sm:py-8"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-lg bg-white shadow-xl sm:max-h-full"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="relative">
           <img
             src={post.img || "/placeholder-food.jpg"}
             alt={post.title}
-            className="h-72 w-full object-cover"
+            className="h-56 w-full object-cover sm:h-72"
             onError={(event) => {
               event.currentTarget.src = "/placeholder-food.jpg";
             }}
