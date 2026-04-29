@@ -48,6 +48,10 @@ supabase/migrations/20260429041000_create_foodie_post_images_bucket.sql
 supabase/migrations/20260429042000_allow_public_delete_foodie_post_images.sql
 ```
 
+```txt
+supabase/migrations/20260429043000_add_user_id_to_posts_and_comments.sql
+```
+
 可選：加入測試資料：
 
 ```txt
@@ -55,6 +59,31 @@ supabase/seed.sql
 ```
 
 按讚使用 `increment_post_likes` RPC 做 atomic increment，避免多人同時按讚時以 `post.likes + 1` 覆蓋彼此的結果。若按讚失敗，請先確認 RPC migration 已在 Supabase SQL Editor 執行。
+
+### Supabase Auth
+
+本階段使用 Email magic link / OTP 登入。請到 Supabase Dashboard 設定：
+
+1. Authentication -> Providers
+2. 確認 Email provider 已啟用
+3. Authentication -> URL Configuration
+4. Site URL 設定為 Vercel production URL
+5. Redirect URLs 加入：
+
+```txt
+http://localhost:3000
+http://localhost:3001
+你的 Vercel production URL
+```
+
+本階段狀態：
+
+- 前端已要求登入後才能發文、留言、上傳圖片。
+- `posts.user_id` 會記錄發文者。
+- `comments.user_id` 會記錄留言者。
+- Storage 上傳路徑會使用 `posts/{user.id}/{timestamp}-{random}.{ext}`。
+- RLS 仍是 MVP public policy。
+- 正式 ownership-based RLS 會在下一階段處理。
 
 ### Supabase Storage
 
@@ -112,17 +141,22 @@ npm run dev
 ```
 
 2. 開啟首頁，確認可讀取 Supabase posts。
-3. 新增一筆情報。
-4. 選擇本機圖片並送出，確認圖片顯示。
-5. 重新整理頁面，確認圖片仍顯示。
-6. 也測試只填圖片 URL，確認 URL 圖片仍可使用。
-7. 對該情報按讚，確認 likes 更新。
-8. 開啟詳情 modal。
-9. 新增留言，確認留言列表立即更新。
-10. 回到首頁，確認 PostCard 留言數 +1。
-11. 重新整理頁面，確認留言數仍依 comments table 正確計算。
-12. 開啟管理後台，刪除剛新增的情報。
-13. 若該情報使用上傳圖片，確認 Storage 中對應 `posts/` object 已被清理。
+3. 未登入時嘗試發文，確認顯示「請先登入後再發佈情報」。
+4. 未登入時開啟詳情並送出留言，確認顯示「請先登入後再留言」。
+5. 使用 Navbar Email 表單寄送 magic link 並登入。
+6. 登入後 Navbar 顯示 user email。
+7. 新增一筆情報。
+8. 選擇本機圖片並送出，確認圖片顯示，Storage path 為 `posts/{user.id}/...`。
+9. 重新整理頁面，確認圖片仍顯示。
+10. 也測試只填圖片 URL，確認 URL 圖片仍可使用。
+11. 對該情報按讚，確認 likes 更新。
+12. 開啟詳情 modal。
+13. 新增留言，確認留言列表立即更新，且 `comments.user_id` 有寫入。
+14. 回到首頁，確認 PostCard 留言數 +1。
+15. 重新整理頁面，確認留言數仍依 comments table 正確計算。
+16. 登出後確認不能再發文、留言、上傳圖片。
+17. 開啟管理後台，刪除剛新增的情報。
+18. 若該情報使用上傳圖片，確認 Storage 中對應 `posts/` object 已被清理。
 
 ## 驗證指令
 

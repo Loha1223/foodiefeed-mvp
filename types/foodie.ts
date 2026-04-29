@@ -8,6 +8,7 @@ export type FoodCategory =
 
 export type Post = {
   id: number;
+  user_id?: string | null;
   created_at: string;
   name: string;
   title: string;
@@ -34,6 +35,7 @@ export type CreatePostInput = {
 export type Comment = {
   id: number;
   post_id: number;
+  user_id?: string | null;
   created_at: string;
   user_name: string;
   content: string;

@@ -1,5 +1,7 @@
 "use client";
 
+import { AuthButton } from "@/components/global/AuthButton";
+
 type NavbarProps = {
   isAdminOpen: boolean;
   onToggleAdmin: () => void;
@@ -22,6 +24,7 @@ export function Navbar({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <AuthButton />
           <button
             type="button"
             onClick={onToggleAdmin}

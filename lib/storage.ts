@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabaseClient";
+import { getCurrentUser } from "@/lib/auth";
 
 const SUPABASE_NOT_CONFIGURED_MESSAGE = "Supabase env is not configured";
 const POST_IMAGES_BUCKET = "foodie-post-images";
@@ -20,14 +21,14 @@ const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/webp": "webp",
 };
 
-function getSafeImagePath(file: File): string {
+function getSafeImagePath(file: File, userId: string): string {
   const extension = IMAGE_EXTENSIONS[file.type] ?? "jpg";
   const randomPart =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2);
 
-  return `posts/${Date.now()}-${randomPart}.${extension}`;
+  return `posts/${userId}/${Date.now()}-${randomPart}.${extension}`;
 }
 
 function getSupabaseUrlOrThrow(): URL {
@@ -84,6 +85,12 @@ export async function uploadPostImage(file: File): Promise<string> {
     throw new Error(SUPABASE_NOT_CONFIGURED_MESSAGE);
   }
 
+  const user = await getCurrentUser();
+
+  if (!user) {
+    throw new Error("請先登入後再上傳圖片");
+  }
+
   if (!ALLOWED_POST_IMAGE_TYPES.includes(file.type)) {
     throw new Error("圖片格式僅支援 JPG、PNG 或 WebP");
   }
@@ -92,7 +99,7 @@ export async function uploadPostImage(file: File): Promise<string> {
     throw new Error("圖片大小不可超過 5MB");
   }
 
-  const filePath = getSafeImagePath(file);
+  const filePath = getSafeImagePath(file, user.id);
   const { error } = await supabase.storage
     .from(POST_IMAGES_BUCKET)
     .upload(filePath, file, {

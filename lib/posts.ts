@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { deletePostImageByUrl } from "@/lib/storage";
+import { getCurrentUser } from "@/lib/auth";
 import type { CreatePostInput, Post } from "@/types/foodie";
 
 const SUPABASE_NOT_CONFIGURED_MESSAGE = "Supabase env is not configured";
@@ -9,6 +10,7 @@ const POST_EXPIRY_DAYS = 14;
 
 type PostRow = {
   id: number;
+  user_id?: string | null;
   created_at: string;
   name: string;
   title: string;
@@ -39,6 +41,7 @@ function getClientOrThrow() {
 function toPost(row: PostRow): Post {
   return {
     id: row.id,
+    user_id: row.user_id ?? null,
     created_at: row.created_at,
     name: row.name,
     title: row.title,
@@ -105,6 +108,11 @@ export async function fetchActivePosts(): Promise<Post[]> {
 
 export async function createPost(input: CreatePostInput): Promise<Post> {
   const supabase = getClientOrThrow();
+  const user = await getCurrentUser();
+
+  if (!user) {
+    throw new Error("請先登入後再發佈情報");
+  }
 
   const { data, error } = await supabase
     .from("posts")
@@ -118,6 +126,7 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
       category: input.category?.trim() || DEFAULT_POST_CATEGORY,
       likes: 0,
       expiry: getDefaultExpiry(),
+      user_id: user.id,
     })
     .select()
     .single();

@@ -217,6 +217,9 @@ export function DetailModal({
             <form onSubmit={handleCommentSubmit} className="mt-4 space-y-3">
               <label className="block text-sm font-medium text-stone-700">
                 補充情報
+                <span className="mt-1 block text-xs font-normal text-stone-500">
+                  登入後可以留言補充情報
+                </span>
                 <textarea
                   value={commentContent}
                   onChange={(event) => {
