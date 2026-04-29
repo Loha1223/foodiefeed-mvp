@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AdminAdManagerPanel } from "@/components/admin/AdminAdManagerPanel";
 import { AdminAdStatsPanel } from "@/components/admin/AdminAdStatsPanel";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { FilterBar } from "@/components/feed/FilterBar";
@@ -154,6 +155,7 @@ function HomeContent() {
   const [isMyPostsOpen, setIsMyPostsOpen] = useState(false);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [isAdStatsOpen, setIsAdStatsOpen] = useState(false);
+  const [isAdManagerOpen, setIsAdManagerOpen] = useState(false);
   const [isMyPostsLoading, setIsMyPostsLoading] = useState(false);
   const [isAdminPostsLoading, setIsAdminPostsLoading] = useState(false);
   const [myPostsError, setMyPostsError] = useState<string | null>(null);
@@ -214,21 +216,19 @@ function HomeContent() {
     void loadPosts();
   }, []);
 
+  async function loadSponsoredPosts() {
+    const activeSponsoredPosts = await fetchActiveSponsoredPosts({
+      city: feedFilter.city,
+      district: feedFilter.district,
+      category: feedFilter.category === "all" ? undefined : feedFilter.category,
+    });
+    setSponsoredPosts(activeSponsoredPosts);
+  }
+
   useEffect(() => {
-    async function loadSponsoredPosts() {
-      if (isFeedLoading) {
-        return;
-      }
-
-      const activeSponsoredPosts = await fetchActiveSponsoredPosts({
-        city: feedFilter.city,
-        district: feedFilter.district,
-        category:
-          feedFilter.category === "all" ? undefined : feedFilter.category,
-      });
-      setSponsoredPosts(activeSponsoredPosts);
+    if (isFeedLoading) {
+      return;
     }
-
     void loadSponsoredPosts();
   }, [
     isFeedLoading,
@@ -246,6 +246,7 @@ function HomeContent() {
       setIsMyPostsOpen(false);
       setIsAdminPanelOpen(false);
       setIsAdStatsOpen(false);
+      setIsAdManagerOpen(false);
       return;
     }
 
@@ -254,6 +255,7 @@ function HomeContent() {
       setAdminPostsError(null);
       setIsAdminPanelOpen(false);
       setIsAdStatsOpen(false);
+      setIsAdManagerOpen(false);
     }
   }, [currentUser, isAdmin]);
 
@@ -493,6 +495,7 @@ function HomeContent() {
     setIsMyPostsOpen(shouldOpen);
     setIsAdminPanelOpen(false);
     setIsAdStatsOpen(false);
+    setIsAdManagerOpen(false);
 
     if (shouldOpen) {
       void loadMyPosts();
@@ -504,6 +507,7 @@ function HomeContent() {
     setIsAdminPanelOpen(shouldOpen);
     setIsMyPostsOpen(false);
     setIsAdStatsOpen(false);
+    setIsAdManagerOpen(false);
 
     if (shouldOpen) {
       void loadAdminPosts();
@@ -515,6 +519,15 @@ function HomeContent() {
     setIsAdStatsOpen(shouldOpen);
     setIsMyPostsOpen(false);
     setIsAdminPanelOpen(false);
+    setIsAdManagerOpen(false);
+  }
+
+  function handleToggleAdManager() {
+    const shouldOpen = !isAdManagerOpen;
+    setIsAdManagerOpen(shouldOpen);
+    setIsMyPostsOpen(false);
+    setIsAdminPanelOpen(false);
+    setIsAdStatsOpen(false);
   }
 
   function handleResetFeedFilter() {
@@ -537,12 +550,14 @@ function HomeContent() {
         isMyPostsOpen={isMyPostsOpen}
         isAdminPanelOpen={isAdminPanelOpen}
         isAdStatsOpen={isAdStatsOpen}
+        isAdManagerOpen={isAdManagerOpen}
         currentUser={currentUser}
         isAdmin={isAdmin}
         isAuthLoading={isAuthLoading}
         onToggleMyPosts={handleToggleMyPosts}
         onToggleAdminPanel={handleToggleAdminPanel}
         onToggleAdStats={handleToggleAdStats}
+        onToggleAdManager={handleToggleAdManager}
         onOpenPostModal={handleOpenPostModal}
       />
       {authError ? (
@@ -578,6 +593,12 @@ function HomeContent() {
         isOpen={isAdStatsOpen}
         isAdmin={isAdmin}
         onClose={() => setIsAdStatsOpen(false)}
+      />
+      <AdminAdManagerPanel
+        isOpen={isAdManagerOpen}
+        isAdmin={isAdmin}
+        onClose={() => setIsAdManagerOpen(false)}
+        onAdsChanged={() => void loadSponsoredPosts()}
       />
       <FilterBar
         filter={feedFilter}

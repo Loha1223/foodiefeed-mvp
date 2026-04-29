@@ -85,3 +85,21 @@ export type SponsoredAdStats = {
   clicks: number;
   ctr_percent: number;
 };
+
+export type CreateSponsoredPostInput = {
+  title: string;
+  brand_name: string;
+  description?: string;
+  image_url?: string;
+  target_url?: string;
+  city?: string;
+  district?: string;
+  category?: string;
+  placement?: string;
+  starts_at?: string;
+  ends_at: string;
+  is_active?: boolean;
+  priority?: number;
+};
+
+export type UpdateSponsoredPostInput = Partial<CreateSponsoredPostInput>;

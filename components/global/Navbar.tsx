@@ -8,12 +8,14 @@ type NavbarProps = {
   isMyPostsOpen: boolean;
   isAdminPanelOpen: boolean;
   isAdStatsOpen: boolean;
+  isAdManagerOpen: boolean;
   currentUser: User | null;
   isAdmin: boolean;
   isAuthLoading: boolean;
   onToggleMyPosts: () => void;
   onToggleAdminPanel: () => void;
   onToggleAdStats: () => void;
+  onToggleAdManager: () => void;
   onOpenPostModal: () => void;
 };
 
@@ -21,12 +23,14 @@ export function Navbar({
   isMyPostsOpen,
   isAdminPanelOpen,
   isAdStatsOpen,
+  isAdManagerOpen,
   currentUser,
   isAdmin,
   isAuthLoading,
   onToggleMyPosts,
   onToggleAdminPanel,
   onToggleAdStats,
+  onToggleAdManager,
   onOpenPostModal,
 }: NavbarProps) {
   const [isMobileActionsOpen, setIsMobileActionsOpen] = useState(false);
@@ -43,6 +47,11 @@ export function Navbar({
 
   function handleToggleAdStats() {
     onToggleAdStats();
+    setIsMobileActionsOpen(false);
+  }
+
+  function handleToggleAdManager() {
+    onToggleAdManager();
     setIsMobileActionsOpen(false);
   }
 
@@ -104,6 +113,13 @@ export function Navbar({
                 className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-stone-500 hover:bg-stone-50"
               >
                 {isAdStatsOpen ? "關閉成效" : "廣告成效"}
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleAdManager}
+                className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:border-stone-500 hover:bg-stone-50"
+              >
+                {isAdManagerOpen ? "關閉廣告" : "廣告管理"}
               </button>
             </>
           ) : null}

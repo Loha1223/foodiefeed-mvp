@@ -1,6 +1,11 @@
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/auth";
-import type { SponsoredAdStats, SponsoredPost } from "@/types/foodie";
+import type {
+  CreateSponsoredPostInput,
+  SponsoredAdStats,
+  SponsoredPost,
+  UpdateSponsoredPostInput,
+} from "@/types/foodie";
 
 const AD_SESSION_STORAGE_KEY = "foodiefeed_ad_session_id";
 const AD_STATS_TRACKING_LIMIT = 5000;
@@ -75,6 +80,114 @@ function toSponsoredPost(row: SponsoredPostRow): SponsoredPost {
   };
 }
 
+function getClientOrThrow() {
+  const supabase = getSupabaseClient();
+
+  if (!supabase) {
+    throw new Error("Supabase env is not configured");
+  }
+
+  return supabase;
+}
+
+function normalizeOptionalText(value: string | undefined) {
+  const trimmedValue = value?.trim();
+  return trimmedValue ? trimmedValue : null;
+}
+
+function validateSponsoredPostInput(input: CreateSponsoredPostInput) {
+  if (!input.brand_name.trim()) {
+    throw new Error("請輸入品牌名稱");
+  }
+
+  if (!input.title.trim()) {
+    throw new Error("請輸入廣告標題");
+  }
+
+  if (!input.ends_at.trim()) {
+    throw new Error("請設定結束時間");
+  }
+
+  const startsAt = input.starts_at?.trim()
+    ? new Date(input.starts_at).getTime()
+    : null;
+  const endsAt = new Date(input.ends_at).getTime();
+
+  if (Number.isNaN(endsAt)) {
+    throw new Error("結束時間格式不正確");
+  }
+
+  if (startsAt !== null && Number.isNaN(startsAt)) {
+    throw new Error("開始時間格式不正確");
+  }
+
+  if (startsAt !== null && endsAt <= startsAt) {
+    throw new Error("結束時間必須晚於開始時間");
+  }
+}
+
+function buildSponsoredPostPayload(
+  input: CreateSponsoredPostInput | UpdateSponsoredPostInput,
+) {
+  const payload: Record<string, string | number | boolean | null> = {};
+
+  if (input.title !== undefined) {
+    payload.title = input.title.trim();
+  }
+
+  if (input.brand_name !== undefined) {
+    payload.brand_name = input.brand_name.trim();
+  }
+
+  if (input.description !== undefined) {
+    payload.description = normalizeOptionalText(input.description);
+  }
+
+  if (input.image_url !== undefined) {
+    payload.image_url = normalizeOptionalText(input.image_url);
+  }
+
+  if (input.target_url !== undefined) {
+    payload.target_url = normalizeOptionalText(input.target_url);
+  }
+
+  if (input.city !== undefined) {
+    payload.city = normalizeOptionalText(input.city);
+  }
+
+  if (input.district !== undefined) {
+    payload.district = normalizeOptionalText(input.district);
+  }
+
+  if (input.category !== undefined) {
+    payload.category = normalizeOptionalText(input.category);
+  }
+
+  if (input.placement !== undefined) {
+    payload.placement = input.placement.trim() || "feed";
+  }
+
+  if (input.starts_at !== undefined) {
+    payload.starts_at = input.starts_at.trim()
+      ? new Date(input.starts_at).toISOString()
+      : new Date().toISOString();
+  }
+
+  if (input.ends_at !== undefined) {
+    payload.ends_at = new Date(input.ends_at).toISOString();
+  }
+
+  if (input.is_active !== undefined) {
+    payload.is_active = input.is_active;
+  }
+
+  if (input.priority !== undefined) {
+    payload.priority = Number.isFinite(input.priority) ? input.priority : 0;
+  }
+
+  return payload;
+}
+
 function buildNullOrEqualsFilter(column: string, value?: string) {
   const trimmedValue = value?.trim();
 
@@ -127,6 +240,102 @@ export async function fetchActiveSponsoredPosts(
   }
 
   return ((data ?? []) as SponsoredPostRow[]).map(toSponsoredPost);
+}
+
+export async function fetchAllSponsoredPosts(): Promise<SponsoredPost[]> {
+  const supabase = getClientOrThrow();
+
+  const { data, error } = await supabase
+    .from("sponsored_posts")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data ?? []) as SponsoredPostRow[]).map(toSponsoredPost);
+}
+
+export async function createSponsoredPost(
+  input: CreateSponsoredPostInput,
+): Promise<SponsoredPost> {
+  validateSponsoredPostInput(input);
+  const supabase = getClientOrThrow();
+  const payload = {
+    ...buildSponsoredPostPayload(input),
+    placement: input.placement?.trim() || "feed",
+    is_active: input.is_active ?? true,
+    priority: input.priority ?? 0,
+  };
+
+  const { data, error } = await supabase
+    .from("sponsored_posts")
+    .insert(payload)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return toSponsoredPost(data as SponsoredPostRow);
+}
+
+export async function updateSponsoredPost(
+  id: number,
+  input: UpdateSponsoredPostInput,
+): Promise<SponsoredPost> {
+  const supabase = getClientOrThrow();
+  const payload = buildSponsoredPostPayload(input);
+
+  const { data, error } = await supabase
+    .from("sponsored_posts")
+    .update(payload)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return toSponsoredPost(data as SponsoredPostRow);
+}
+
+export async function toggleSponsoredPostActive(
+  id: number,
+  isActive: boolean,
+): Promise<SponsoredPost> {
+  const supabase = getClientOrThrow();
+
+  const { data, error } = await supabase
+    .from("sponsored_posts")
+    .update({ is_active: isActive })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return toSponsoredPost(data as SponsoredPostRow);
+}
+
+export async function deleteSponsoredPost(id: number): Promise<void> {
+  const supabase = getClientOrThrow();
+
+  const { error } = await supabase
+    .from("sponsored_posts")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
 
 async function getTrackingUserId(): Promise<string | null> {

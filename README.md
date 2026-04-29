@@ -283,6 +283,38 @@ order by sp.id desc;
 - 不做報表匯出。
 - 不做正式 BI 分析。
 
+### Admin 廣告管理 MVP
+
+`profiles.role = 'admin'` 的使用者登入後，Navbar 會顯示「廣告管理」入口。一般使用者不會看到此入口；新增、編輯、刪除仍由 `sponsored_posts` 的 admin RLS policy 保護。
+
+廣告管理目前支援：
+
+- 查看所有 `sponsored_posts`。
+- 新增 sponsored post。
+- 編輯 sponsored post。
+- 啟用 / 停用 sponsored post。
+- 刪除 sponsored post。
+
+表單欄位：
+
+- `brand_name`
+- `title`
+- `description`
+- `image_url`
+- `target_url`
+- `city`
+- `district`
+- `category`
+- `placement`
+- `starts_at`
+- `ends_at`
+- `priority`
+- `is_active`
+
+本階段 `image_url` 只支援 URL 輸入，不支援 Supabase Storage 圖片上傳。刪除 `sponsored_posts` 時，對應的 `ad_impressions` 與 `ad_clicks` 會因 foreign key `on delete cascade` 一併刪除。
+
+本階段仍不做付款、報表匯出、點擊 / 曝光去重、廣告審核流程或操作紀錄。正式營運前建議補上廣告審核、操作 audit log、素材管理、付款狀態與投放預算控管。
+
 ### Supabase Storage
 
 圖片上傳使用 bucket：
@@ -379,6 +411,13 @@ npm run dev
 37. 使用 admin 帳號登入，確認 Navbar 顯示「廣告成效」。
 38. 點擊「廣告成效」，確認可看到 sponsored posts 的曝光、點擊與 CTR。
 39. 若沒有 sponsored posts，確認顯示「目前沒有廣告資料」。
+40. 使用一般帳號登入，確認 Navbar 不顯示「廣告管理」。
+41. 使用 admin 帳號登入，確認 Navbar 顯示「廣告管理」。
+42. 點擊「廣告管理」，新增一筆 sponsored post，確認首頁可顯示 active ad。
+43. 編輯 sponsored post，確認列表資料更新。
+44. 停用 sponsored post，確認首頁不再顯示該 ad。
+45. 重新啟用 sponsored post，確認首頁可再次顯示。
+46. 刪除 sponsored post，確認該筆廣告移除，相關 `ad_impressions` / `ad_clicks` 也因 cascade 移除。
 
 ## 驗證指令
 
