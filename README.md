@@ -50,6 +50,12 @@ Pre-push local checklist：
 
 CI 目前不測真實 Supabase CRUD、Auth、Storage、RLS 或 E2E flow；這些仍需依照 smoke test checklist 手動驗證。
 
+## Soft Launch / QA Docs
+
+- [Soft Launch Checklist](docs/SOFT_LAUNCH_CHECKLIST.md)
+- [Manual QA Runbook](docs/MANUAL_QA_RUNBOOK.md)
+- [Rollback Plan](docs/ROLLBACK_PLAN.md)
+
 ## Supabase 設定與測試
 
 ### .env.local
