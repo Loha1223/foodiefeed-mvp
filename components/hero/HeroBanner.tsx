@@ -123,7 +123,7 @@ export function HeroBanner(props: HeroBannerProps) {
   }
 
   return (
-    <section className="mx-auto max-w-6xl px-4 pt-5 sm:px-6">
+    <section className="mx-auto max-w-6xl px-4 pt-4 sm:px-6 sm:pt-5">
       <article
         ref={bannerRef}
         role={props.variant === "post" ? "button" : undefined}
@@ -154,7 +154,7 @@ export function HeroBanner(props: HeroBannerProps) {
             關閉
           </button>
         ) : null}
-        <div className="relative min-h-56 overflow-hidden bg-stone-100 md:min-h-72">
+        <div className="relative min-h-52 overflow-hidden bg-stone-100 md:min-h-72">
           <img
             src={displayImageUrl}
             alt={
@@ -175,15 +175,15 @@ export function HeroBanner(props: HeroBannerProps) {
         <div className="flex flex-col justify-center gap-4 p-5 sm:p-6 lg:p-7">
           {props.variant === "sponsored" ? (
             <>
-              <div className="space-y-3">
-                <p className="text-sm font-semibold text-amber-800">
+              <div className="space-y-2.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-800 sm:text-sm">
                   {props.ad.brand_name}
                 </p>
-                <h1 className="text-2xl font-bold leading-tight text-stone-950 sm:text-3xl">
+                <h1 className="text-xl font-bold leading-tight text-stone-950 sm:text-3xl">
                   {props.ad.title}
                 </h1>
                 {props.ad.description ? (
-                  <p className="text-sm leading-6 text-stone-600 sm:text-base">
+                  <p className="text-sm leading-6 text-stone-600">
                     {props.ad.description}
                   </p>
                 ) : null}
@@ -203,7 +203,10 @@ export function HeroBanner(props: HeroBannerProps) {
             </>
           ) : (
             <>
-              <div className="space-y-3">
+              <div className="space-y-2.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-red-700">
+                  限時美食情報站
+                </p>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700">
                     {props.post.category === "other"
@@ -214,7 +217,7 @@ export function HeroBanner(props: HeroBannerProps) {
                     {props.post.city} / {props.post.district}
                   </span>
                 </div>
-                <h1 className="text-2xl font-bold leading-tight text-stone-950 sm:text-3xl">
+                <h1 className="text-xl font-bold leading-tight text-stone-950 sm:text-3xl">
                   {props.post.title}
                 </h1>
                 <div className="space-y-1">
@@ -225,6 +228,9 @@ export function HeroBanner(props: HeroBannerProps) {
                     {props.post.address}
                   </p>
                 </div>
+                <p className="text-sm text-stone-600">
+                  探索快閃、限定與在地優惠，現在就掌握最新情報。
+                </p>
               </div>
 
               <button
@@ -235,7 +241,7 @@ export function HeroBanner(props: HeroBannerProps) {
                 }}
                 className="w-fit rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
               >
-                查看情報
+                查看限時情報
               </button>
             </>
           )}

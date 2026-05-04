@@ -20,13 +20,14 @@ export function MasonryGrid({
   onPostClick,
   onPostLike,
 }: MasonryGridProps) {
-  const sectionTitle = "探索限時美食情報";
-  const sectionDescription = "點擊卡片可查看詳情、留言與即時互動。";
+  const sectionTitle = "現在就看最新限時情報";
+  const sectionDescription =
+    "探索快閃店、當日限定與在地優惠；點擊卡片可查看詳情並加入留言。";
 
   if (isLoading) {
     return (
-      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <div className="mb-4">
+      <section className="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-8">
+        <div className="mb-3 sm:mb-4">
           <h2 className="text-xl font-bold text-stone-950">{sectionTitle}</h2>
           <p className="mt-1 text-sm text-stone-500">{sectionDescription}</p>
         </div>
@@ -56,21 +57,21 @@ export function MasonryGrid({
 
   if (posts.length === 0) {
     return (
-      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <div className="mb-4">
+      <section className="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-8">
+        <div className="mb-3 sm:mb-4">
           <h2 className="text-xl font-bold text-stone-950">{sectionTitle}</h2>
           <p className="mt-1 text-sm text-stone-500">{sectionDescription}</p>
         </div>
         <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50 px-6 py-12 text-center text-stone-500">
-          目前沒有符合條件的情報，請調整搜尋或篩選條件後再試。也可以發佈第一篇情報，分享最新美食動態。
+          目前沒有符合條件的情報。你可以調整搜尋或篩選條件，或立即發佈限時情報分享給大家。
         </div>
       </section>
     );
   }
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <div className="mb-4">
+    <section className="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-8">
+      <div className="mb-3 sm:mb-4">
         <h2 className="text-xl font-bold text-stone-950">{sectionTitle}</h2>
         <p className="mt-1 text-sm text-stone-500">{sectionDescription}</p>
       </div>

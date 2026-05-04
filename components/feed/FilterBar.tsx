@@ -80,16 +80,22 @@ export function FilterBar({
   }, [filter]);
 
   return (
-    <section className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
-      <div className="space-y-3 border-b border-stone-200 pb-4">
+    <section className="mx-auto max-w-6xl px-4 pt-4 sm:px-6 sm:pt-5">
+      <div className="space-y-3 rounded-lg border border-stone-200 bg-white/80 p-3 shadow-sm sm:p-4">
         <div>
-          <p className="text-sm font-medium text-stone-500">即時情報</p>
-          <p className="mt-1 text-lg font-semibold text-stone-900">
+          <p className="text-xs font-medium text-stone-500 sm:text-sm">
+            即時情報探索
+          </p>
+          <p className="mt-1 text-base font-semibold text-stone-900 sm:text-lg">
             共 {totalCount} 筆，篩選後 {filteredCount} 筆
           </p>
           {isLoading ? (
             <p className="mt-1 text-xs text-stone-500">情報載入中，請稍候...</p>
-          ) : null}
+          ) : (
+            <p className="mt-1 text-xs text-stone-500">
+              先看最新情報，再依需求展開進階篩選。
+            </p>
+          )}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">

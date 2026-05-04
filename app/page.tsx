@@ -686,7 +686,7 @@ function HomeContent() {
         onOpenPostModal={handleOpenPostModal}
       />
       {authError ? (
-        <div className="mx-auto max-w-6xl px-4 pt-4 text-sm text-red-700 sm:px-6">
+        <div className="mx-auto max-w-6xl px-4 pt-3 text-sm text-red-700 sm:px-6">
           {authError}
         </div>
       ) : null}
@@ -725,6 +725,28 @@ function HomeContent() {
         onClose={() => setIsAdManagerOpen(false)}
         onAdsChanged={() => void loadSponsoredPosts()}
       />
+      <section className="mx-auto max-w-6xl px-4 pt-4 sm:px-6 sm:pt-5">
+        <div className="rounded-lg border border-stone-200 bg-white px-4 py-4 shadow-sm sm:px-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-red-700">
+            FoodieFeed 味鮮牆
+          </p>
+          <h2 className="mt-1 text-lg font-bold text-stone-950 sm:text-xl">
+            限時美食情報站，現在就看、現在就分享
+          </h2>
+          <p className="mt-2 text-sm text-stone-600">
+            快速掌握快閃店、當日限定與在地優惠，也能一鍵發佈你剛發現的限時情報。
+          </p>
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={handleOpenPostModal}
+              className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700"
+            >
+              發佈限時情報
+            </button>
+          </div>
+        </div>
+      </section>
       <FilterBar
         filter={feedFilter}
         isLoading={isFeedLoading}
@@ -775,7 +797,7 @@ function HomeContent() {
         onPostClick={handlePostClick}
         onPostLike={handleLike}
       />
-      <footer className="mx-auto max-w-6xl px-4 pb-8 pt-2 text-center text-xs text-stone-500 sm:px-6">
+      <footer className="mx-auto max-w-6xl px-4 pb-8 pt-1 text-center text-xs text-stone-500 sm:px-6">
         FoodieFeed 味鮮牆｜限時美食情報站
       </footer>
       <PostModal

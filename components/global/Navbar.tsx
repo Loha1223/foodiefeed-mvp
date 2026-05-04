@@ -61,22 +61,24 @@ export function Navbar({
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-stone-200 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+    <header className="sticky top-0 z-30 border-b border-stone-200 bg-white/95 backdrop-blur">
+      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-normal text-stone-950">
+          <h1 className="text-xl font-bold tracking-normal text-stone-950 sm:text-2xl">
             味鮮牆 FoodieFeed
           </h1>
-          <p className="mt-1 text-sm text-stone-500">限時美食情報站</p>
+          <p className="mt-0.5 text-xs text-stone-500 sm:text-sm">
+            限時美食情報站
+          </p>
         </div>
 
         <div className="flex items-center justify-end gap-2 sm:hidden">
           <button
             type="button"
             onClick={handleOpenPostModal}
-            className="rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+            className="rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700"
           >
-            發佈情報
+            發佈限時情報
           </button>
           <button
             type="button"
@@ -126,9 +128,9 @@ export function Navbar({
           <button
             type="button"
             onClick={handleOpenPostModal}
-            className="hidden rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 sm:inline-flex"
+            className="hidden rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 sm:inline-flex"
           >
-            發佈情報
+            發佈限時情報
           </button>
         </div>
       </div>
