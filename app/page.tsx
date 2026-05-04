@@ -439,10 +439,14 @@ function HomeContent() {
       setMyPosts(previousMyPosts);
       setAdminPosts(previousAdminPosts);
       setSelectedPost(previousSelectedPost);
+      const isAlreadyLiked =
+        error instanceof Error && error.message === "你已經按過讚";
       showToast({
-        variant: "error",
-        title: "按讚失敗",
-        message: getUserFriendlyErrorMessage(error, "按讚失敗，請稍後再試。"),
+        variant: isAlreadyLiked ? "info" : "error",
+        title: isAlreadyLiked ? "已按過讚" : "按讚失敗",
+        message: isAlreadyLiked
+          ? "你已經按過讚"
+          : getUserFriendlyErrorMessage(error, "按讚失敗，請稍後再試。"),
       });
     }
   }

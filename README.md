@@ -72,13 +72,17 @@ supabase/migrations/20260429047000_create_ad_tracking_tables.sql
 supabase/migrations/20260429048000_harden_ad_tracking.sql
 ```
 
+```txt
+supabase/migrations/20260429049000_harden_post_likes.sql
+```
+
 可選：加入測試資料：
 
 ```txt
 supabase/seed.sql
 ```
 
-按讚使用 `increment_post_likes` RPC 做 atomic increment，避免多人同時按讚時以 `post.likes + 1` 覆蓋彼此的結果。若按讚失敗，請先確認 RPC migration 已在 Supabase SQL Editor 執行。
+按讚使用 `increment_post_likes` RPC 做 atomic increment 與 user/session 去重，避免多人同時按讚時以 `post.likes + 1` 覆蓋彼此的結果，也避免同一使用者或同一匿名 session 對同一 post 重複灌讚。若按讚失敗，請先確認 likes RPC migrations 已在 Supabase SQL Editor 執行。
 
 ### Supabase Auth
 
@@ -117,7 +121,7 @@ http://localhost:3001
 - 登入者可新增自己的 comments，`comments.user_id` 必須等於 `auth.uid()`。
 - 留言作者可修改 / 刪除自己的 comments。
 - admin 可修改 / 刪除所有 posts，並可刪除所有 comments。
-- likes 使用 `increment_post_likes` RPC，仍允許匿名與登入者執行。
+- likes 使用 `increment_post_likes` RPC，仍允許匿名與登入者執行，但會透過 `post_likes` 做 user/session 去重。
 
 既有 `user_id is null` 的 posts / comments：
 
@@ -125,6 +129,43 @@ http://localhost:3001
 - 不會被一般登入使用者視為自己的內容。
 - 不能由一般使用者刪除。
 - 若需要清理，請使用 admin 帳號或 SQL 手動處理。
+
+### Likes 防濫用 MVP
+
+按讚資料使用：
+
+```txt
+post_likes
+```
+
+`posts.likes` 仍保留作為前台顯示 counter；`post_likes` 用於防止重複按讚。
+
+設計：
+
+- 登入使用者以 `post_id + user_id` 去重。
+- 匿名訪客以 `post_id + session_id` 去重。
+- 匿名 session id 儲存在 browser `localStorage` 的 `foodiefeed_like_session_id`。
+- `session_id` 最長 120 字元。
+- 一般使用者不可直接 select / insert `post_likes`。
+- `post_likes` 寫入只透過 `increment_post_likes` security definer RPC。
+- admin 可 select / delete `post_likes`，用於稽核或清理。
+- 若已按過讚，RPC 會回 `already_liked`，前端顯示「你已經按過讚」，且 optimistic like 會 rollback。
+
+新版 `increment_post_likes(post_id, session_id, metadata)`：
+
+- `auth.uid()` 存在時，以 `user_id` 判斷是否已按讚。
+- 未登入時，`session_id` 必填，並以 `session_id` 判斷是否已按讚。
+- 新 like 會先寫入 `post_likes`，再將 `posts.likes + 1`。
+- unique index 會阻止同時重複 insert，避免 race condition 重複加讚。
+- post 不存在時回 `post_not_found`。
+
+限制：
+
+- localStorage session 可被清除。
+- 尚未做 unlike。
+- 尚未做 IP / device fingerprint / CAPTCHA。
+- 尚未做完整 rate limit。
+- 這是 MVP 級防濫用，不是完整反作弊系統。
 
 ### Admin Role
 
@@ -432,48 +473,51 @@ npm run dev
 9. 選擇本機圖片並送出，確認圖片顯示，Storage path 為 `posts/{auth.uid()}/...`。
 10. 重新整理頁面，確認圖片仍顯示。
 11. 也測試只填圖片 URL，確認 URL 圖片仍可使用。
-12. 對該情報按讚，確認 likes 更新。
-13. 開啟詳情 modal。
-14. 新增留言，確認留言列表立即更新，且 `comments.user_id = auth.uid()`。
-15. 回到首頁，確認 PostCard 留言數 +1。
-16. 重新整理頁面，確認留言數仍依 comments table 正確計算。
-17. 點擊「我的投稿」，確認只看到自己的 posts。
-18. 建立或手動修改一篇自己的過期 post，確認首頁不顯示該過期資料。
-19. 點擊「我的投稿」，確認仍可看到自己的過期 post。
-20. 使用另一個帳號登入，確認「我的投稿」不顯示第一個帳號建立的 post，也看不到第一個帳號的過期 post。
-21. 一般使用者確認看不到「Admin 管理」入口。
-22. 使用另一個帳號確認不能刪除第一個帳號建立的 post。
-23. 確認另一個帳號不能 delete `posts/{第一個帳號 id}/...` 的 Storage object。
-24. 手動將測試帳號設為 admin，重新登入後確認 Navbar 顯示「Admin 管理」。
-25. 點擊「Admin 管理」，確認可看到所有 posts，包含過期 posts 與 owner metadata。
-26. Admin 測試刪除任一 post，確認 DB delete 成功；若 Storage cleanup 被 policy 擋下，console 會顯示 warning。
-27. 登出後確認不能再發文、留言、上傳圖片。
-28. 回到原作者帳號，開啟「我的投稿」，刪除自己新增的情報。
-29. 若該情報使用上傳圖片，確認 Storage 中對應 `posts/{auth.uid()}/...` object 已被清理。
-30. 在 `sponsored_posts` 新增 active feed 廣告，確認首頁每 6 張自然情報後插入 1 張標示「贊助」的廣告卡。
-31. 設定廣告 `city` / `district` / `category` 後，確認 Feed 篩選條件符合時才顯示。
-32. 設定 `target_url` 後，確認「查看活動」會以新分頁開啟。
-33. 廣告卡進入畫面後，確認 `ad_impressions` 新增資料。
-34. 點擊「查看活動」後，確認 `ad_clicks` 新增資料。
-35. 確認一般 public user 無法讀取 `ad_impressions` / `ad_clicks`，admin 才能查看。
-36. 使用一般帳號登入，確認 Navbar 不顯示「廣告成效」。
-37. 使用 admin 帳號登入，確認 Navbar 顯示「廣告成效」。
-38. 點擊「廣告成效」，確認可看到 sponsored posts 的曝光、點擊與 CTR。
-39. 若沒有 sponsored posts，確認顯示「目前沒有廣告資料」。
-40. 使用一般帳號登入，確認 Navbar 不顯示「廣告管理」。
-41. 使用 admin 帳號登入，確認 Navbar 顯示「廣告管理」。
-42. 點擊「廣告管理」，新增一筆 sponsored post，確認首頁可顯示 active ad。
-43. 編輯 sponsored post，確認列表資料更新。
-44. 停用 sponsored post，確認首頁不再顯示該 ad。
-45. 重新啟用 sponsored post，確認首頁可再次顯示。
-46. 刪除 sponsored post，確認該筆廣告移除，相關 `ad_impressions` / `ad_clicks` 也因 cascade 移除。
-47. 在廣告管理輸入錯誤 `target_url`，確認無法送出並顯示 inline error。
-48. 在廣告管理輸入錯誤 `image_url`，確認顯示 URL 錯誤；若 URL 格式正確但圖片載入失敗，確認顯示預覽失敗提示。
-49. 設定 `starts_at` 晚於 `ends_at`，確認無法送出。
-50. 使用搜尋與狀態篩選，確認列表可依 brand / title / city / district / category 與投放狀態篩選。
-51. 確認 SponsoredCard 圖片載入失敗時會 fallback 到 `/placeholder-food.jpg`，且曝光 / 點擊 tracking 仍可運作。
-52. 確認過長 `page_path` / `target_url` / `session_id` 會被前端截斷，資料庫 constraint 會拒絕不符合格式的 tracking payload。
-53. 確認「廣告成效」顯示的是去重曝光、去重點擊與去重 CTR。
+12. 對該情報按讚，確認 likes 更新，且 `post_likes` 寫入資料。
+13. 同一匿名 session 對同一 post 再按一次，確認不再 +1，並顯示「你已經按過讚」。
+14. 同一匿名 session 對不同 post 按讚，確認可成功。
+15. 登入後對同一 post 重複按讚，確認第二次不再 +1。
+16. 開啟詳情 modal。
+17. 新增留言，確認留言列表立即更新，且 `comments.user_id = auth.uid()`。
+18. 回到首頁，確認 PostCard 留言數 +1。
+19. 重新整理頁面，確認留言數仍依 comments table 正確計算。
+20. 點擊「我的投稿」，確認只看到自己的 posts。
+21. 建立或手動修改一篇自己的過期 post，確認首頁不顯示該過期資料。
+22. 點擊「我的投稿」，確認仍可看到自己的過期 post。
+23. 使用另一個帳號登入，確認「我的投稿」不顯示第一個帳號建立的 post，也看不到第一個帳號的過期 post。
+24. 一般使用者確認看不到「Admin 管理」入口。
+25. 使用另一個帳號確認不能刪除第一個帳號建立的 post。
+26. 確認另一個帳號不能 delete `posts/{第一個帳號 id}/...` 的 Storage object。
+27. 手動將測試帳號設為 admin，重新登入後確認 Navbar 顯示「Admin 管理」。
+28. 點擊「Admin 管理」，確認可看到所有 posts，包含過期 posts 與 owner metadata。
+29. Admin 測試刪除任一 post，確認 DB delete 成功；若 Storage cleanup 被 policy 擋下，console 會顯示 warning。
+30. 登出後確認不能再發文、留言、上傳圖片。
+31. 回到原作者帳號，開啟「我的投稿」，刪除自己新增的情報。
+32. 若該情報使用上傳圖片，確認 Storage 中對應 `posts/{auth.uid()}/...` object 已被清理。
+33. 在 `sponsored_posts` 新增 active feed 廣告，確認首頁每 6 張自然情報後插入 1 張標示「贊助」的廣告卡。
+34. 設定廣告 `city` / `district` / `category` 後，確認 Feed 篩選條件符合時才顯示。
+35. 設定 `target_url` 後，確認「查看活動」會以新分頁開啟。
+36. 廣告卡進入畫面後，確認 `ad_impressions` 新增資料。
+37. 點擊「查看活動」後，確認 `ad_clicks` 新增資料。
+38. 確認一般 public user 無法讀取 `ad_impressions` / `ad_clicks`，admin 才能查看。
+39. 使用一般帳號登入，確認 Navbar 不顯示「廣告成效」。
+40. 使用 admin 帳號登入，確認 Navbar 顯示「廣告成效」。
+41. 點擊「廣告成效」，確認可看到 sponsored posts 的曝光、點擊與 CTR。
+42. 若沒有 sponsored posts，確認顯示「目前沒有廣告資料」。
+43. 使用一般帳號登入，確認 Navbar 不顯示「廣告管理」。
+44. 使用 admin 帳號登入，確認 Navbar 顯示「廣告管理」。
+45. 點擊「廣告管理」，新增一筆 sponsored post，確認首頁可顯示 active ad。
+46. 編輯 sponsored post，確認列表資料更新。
+47. 停用 sponsored post，確認首頁不再顯示該 ad。
+48. 重新啟用 sponsored post，確認首頁可再次顯示。
+49. 刪除 sponsored post，確認該筆廣告移除，相關 `ad_impressions` / `ad_clicks` 也因 cascade 移除。
+50. 在廣告管理輸入錯誤 `target_url`，確認無法送出並顯示 inline error。
+51. 在廣告管理輸入錯誤 `image_url`，確認顯示 URL 錯誤；若 URL 格式正確但圖片載入失敗，確認顯示預覽失敗提示。
+52. 設定 `starts_at` 晚於 `ends_at`，確認無法送出。
+53. 使用搜尋與狀態篩選，確認列表可依 brand / title / city / district / category 與投放狀態篩選。
+54. 確認 SponsoredCard 圖片載入失敗時會 fallback 到 `/placeholder-food.jpg`，且曝光 / 點擊 tracking 仍可運作。
+55. 確認過長 `page_path` / `target_url` / `session_id` 會被前端截斷，資料庫 constraint 會拒絕不符合格式的 tracking payload。
+56. 確認「廣告成效」顯示的是去重曝光、去重點擊與去重 CTR。
 
 ## 驗證指令
 

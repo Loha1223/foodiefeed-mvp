@@ -7,6 +7,8 @@ const SUPABASE_NOT_CONFIGURED_MESSAGE = "Supabase env is not configured";
 const DEFAULT_POST_IMAGE = "/placeholder-food.jpg";
 const DEFAULT_POST_CATEGORY = "other";
 const POST_EXPIRY_DAYS = 14;
+const LIKE_SESSION_STORAGE_KEY = "foodiefeed_like_session_id";
+const MAX_LIKE_SESSION_ID_LENGTH = 120;
 
 type PostRow = {
   id: number;
@@ -60,6 +62,35 @@ function getDefaultExpiry(): string {
   const expiry = new Date();
   expiry.setDate(expiry.getDate() + POST_EXPIRY_DAYS);
   return expiry.toISOString();
+}
+
+export function getOrCreateLikeSessionId(): string | undefined {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  try {
+    const existingSessionId = window.localStorage.getItem(
+      LIKE_SESSION_STORAGE_KEY,
+    );
+
+    if (existingSessionId) {
+      return existingSessionId.slice(0, MAX_LIKE_SESSION_ID_LENGTH);
+    }
+
+    const sessionId = `like_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2)}`.slice(0, MAX_LIKE_SESSION_ID_LENGTH);
+    window.localStorage.setItem(LIKE_SESSION_STORAGE_KEY, sessionId);
+    return sessionId;
+  } catch (error) {
+    console.warn(
+      error instanceof Error
+        ? `Failed to access like session storage: ${error.message}`
+        : "Failed to access like session storage",
+    );
+    return undefined;
+  }
 }
 
 export async function attachCommentCounts(posts: Post[]): Promise<Post[]> {
@@ -180,15 +211,30 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
 
 export async function incrementPostLike(post: Post): Promise<Post> {
   const supabase = getClientOrThrow();
+  const sessionId = getOrCreateLikeSessionId();
 
   const { data, error } = await supabase.rpc("increment_post_likes", {
     post_id: post.id,
+    session_id: sessionId ?? null,
+    metadata: {},
   });
 
   if (error) {
-    throw new Error(
-      `${error.message}. Please confirm the increment_post_likes RPC migration has been executed.`,
-    );
+    const message = error.message.toLowerCase();
+
+    if (message.includes("already_liked")) {
+      throw new Error("你已經按過讚");
+    }
+
+    if (message.includes("post_not_found")) {
+      throw new Error("這則情報不存在");
+    }
+
+    if (message.includes("session_id_required")) {
+      throw new Error("無法建立匿名按讚識別，請允許瀏覽器儲存後再試");
+    }
+
+    throw new Error(error.message);
   }
 
   if (!data) {
