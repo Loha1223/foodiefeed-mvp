@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import {
   getOrCreateAdSessionId,
   trackAdClick,
@@ -8,17 +8,23 @@ import {
 } from "@/lib/ads";
 import type { Post, SponsoredPost } from "@/types/foodie";
 
-type HeroBannerProps =
-  | {
+type HeroBannerBaseProps = {
+  onDismiss?: () => void;
+};
+
+type HeroBannerProps = HeroBannerBaseProps &
+  (
+    | {
       variant: "sponsored";
       ad: SponsoredPost;
       onCtaClick?: () => void;
     }
-  | {
+    | {
       variant: "post";
       post: Post;
       onPostClick: (post: Post) => void;
-    };
+    }
+  );
 
 const fallbackImage = "/placeholder-food.jpg";
 
@@ -31,6 +37,7 @@ export function HeroBanner(props: HeroBannerProps) {
   const bannerRef = useRef<HTMLElement | null>(null);
   const hasTrackedImpressionRef = useRef(false);
   const isSponsored = props.variant === "sponsored";
+  const sponsoredAd = props.variant === "sponsored" ? props.ad : null;
   const imageUrl = isSponsored
     ? props.ad.image_url || fallbackImage
     : props.post.img || fallbackImage;
@@ -42,10 +49,11 @@ export function HeroBanner(props: HeroBannerProps) {
   }, [isSponsored, isSponsored ? props.ad.id : props.post.id, imageUrl]);
 
   useEffect(() => {
-    if (!isSponsored) {
+    if (!sponsoredAd) {
       return;
     }
 
+    const activeSponsoredAd = sponsoredAd;
     const bannerElement = bannerRef.current;
 
     if (!bannerElement) {
@@ -53,13 +61,13 @@ export function HeroBanner(props: HeroBannerProps) {
     }
 
     function trackImpressionOnce() {
-      if (hasTrackedImpressionRef.current || props.variant !== "sponsored") {
+      if (hasTrackedImpressionRef.current) {
         return;
       }
 
       hasTrackedImpressionRef.current = true;
       void trackAdImpression({
-        adId: props.ad.id,
+        adId: activeSponsoredAd.id,
         placement: "hero",
         pagePath: getPagePath(),
         sessionId: getOrCreateAdSessionId(),
@@ -86,7 +94,7 @@ export function HeroBanner(props: HeroBannerProps) {
     observer.observe(bannerElement);
 
     return () => observer.disconnect();
-  }, [isSponsored, props]);
+  }, [sponsoredAd]);
 
   function handleSponsoredCtaClick() {
     if (props.variant !== "sponsored") {
@@ -109,6 +117,11 @@ export function HeroBanner(props: HeroBannerProps) {
     }
   }
 
+  function handleDismissClick(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    props.onDismiss?.();
+  }
+
   return (
     <section className="mx-auto max-w-6xl px-4 pt-5 sm:px-6">
       <article
@@ -125,12 +138,22 @@ export function HeroBanner(props: HeroBannerProps) {
             handlePostClick();
           }
         }}
-        className={`grid overflow-hidden rounded-lg border shadow-sm md:grid-cols-[1.08fr_0.92fr] ${
+        className={`relative grid overflow-hidden rounded-lg border shadow-sm md:grid-cols-[1.08fr_0.92fr] ${
           props.variant === "sponsored"
             ? "border-amber-200 bg-amber-50"
             : "border-stone-200 bg-white"
         } ${props.variant === "post" ? "cursor-pointer hover:shadow-md" : ""}`}
       >
+        {props.onDismiss ? (
+          <button
+            type="button"
+            onClick={handleDismissClick}
+            className="absolute right-3 top-3 z-20 rounded-full bg-white/95 px-2.5 py-1.5 text-xs font-semibold text-stone-600 shadow-sm transition hover:bg-white hover:text-stone-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2"
+            aria-label="關閉 Hero Banner，本次瀏覽階段不再顯示"
+          >
+            關閉
+          </button>
+        ) : null}
         <div className="relative min-h-56 overflow-hidden bg-stone-100 md:min-h-72">
           <img
             src={displayImageUrl}
@@ -218,6 +241,23 @@ export function HeroBanner(props: HeroBannerProps) {
           )}
         </div>
       </article>
+    </section>
+  );
+}
+
+export function HeroBannerSkeleton() {
+  return (
+    <section className="mx-auto max-w-6xl px-4 pt-5 sm:px-6">
+      <div className="grid overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm md:grid-cols-[1.08fr_0.92fr]">
+        <div className="min-h-36 animate-pulse bg-gradient-to-br from-stone-100 to-stone-200 sm:min-h-44 md:min-h-52" />
+        <div className="space-y-3 p-5 sm:p-6">
+          <div className="h-4 w-24 animate-pulse rounded bg-stone-200" />
+          <div className="h-7 w-4/5 animate-pulse rounded bg-stone-200" />
+          <div className="h-4 w-full animate-pulse rounded bg-stone-200" />
+          <div className="h-4 w-2/3 animate-pulse rounded bg-stone-200" />
+          <div className="h-9 w-24 animate-pulse rounded bg-stone-200" />
+        </div>
+      </div>
     </section>
   );
 }

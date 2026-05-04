@@ -593,7 +593,9 @@ export function AdminAdManagerPanel({
                         <option value="detail">detail</option>
                       </select>
                       <span className="text-xs leading-5 text-stone-500">
-                        feed：Feed 原生廣告卡；hero：首頁橫幅 Banner；detail：詳情頁預留。
+                        feed：Feed 原生廣告卡，每 6 張情報後插入。hero：首頁橫幅
+                        Banner，只顯示 active 且 priority 最高的一則，建議使用橫幅圖片，target_url
+                        可空。detail：詳情頁預留，目前前台尚未顯示。
                       </span>
                     </label>
                   </div>

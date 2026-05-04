@@ -412,7 +412,17 @@ Post Hero：
 - 標示「熱門情報」，不可標示為贊助。
 - 不記錄廣告 tracking。
 - 點擊 Banner 或「查看情報」會開啟既有 DetailModal。
-- 從目前篩選後的 active posts 挑選，排序依序為 `comment_count desc`、`likes desc`、`created_at desc`。
+- 從目前篩選後的 active posts 挑選。
+- 品質門檻：貼文必須未過期、符合目前 filter，且 `title`、`name`、`city`、`district`、`address` 都存在。
+- 互動門檻：`comment_count >= 1` 或 `likes >= 5`。
+- 排序依序為 `comment_count desc`、`likes desc`、`created_at desc`。
+- 若小流量階段沒有符合門檻的 post，Post Hero 會不顯示，這是預期行為。
+
+使用者行為：
+
+- 使用者可手動關閉 Hero Banner。
+- 關閉後會寫入 browser `sessionStorage`，本次 session 不再顯示 Sponsored Hero、Post Hero 或 Hero loading skeleton。
+- 新的 browser session 可再次顯示 Hero。
 
 限制：
 
@@ -421,6 +431,25 @@ Post Hero：
 - 不做 A/B test。
 - 不做進階熱門演算法權重。
 - 不做 post detail route。
+
+Hero 營運注意事項：
+
+- Admin 廣告管理中 `placement = hero` 代表首頁橫幅 Banner。
+- 同時有多則 active hero ads 時，依 `priority desc`、`created_at desc` 決定顯示哪一則。
+- Hero 圖片建議使用橫幅比例，避免主視覺被裁切。
+- `target_url` 可空；空值時 Sponsored Hero 不顯示 CTA。
+- 若沒有可用 hero ad，系統會嘗試使用符合品質門檻的 Post Hero fallback。
+
+Hero QA 建議：
+
+1. 建立一筆 active `placement = hero` 的 sponsored post，確認首頁顯示 Sponsored Hero。
+2. 確認 Sponsored Hero 標示「贊助｜本週推薦」。
+3. 捲動或重新整理後確認 `ad_impressions.placement = 'hero'`。
+4. 點擊 CTA 後確認 `ad_clicks.placement = 'hero'`。
+5. 停用 hero ad 後，確認 fallback 到符合門檻的 Post Hero。
+6. 確認 Post Hero 標示「熱門情報」，且不寫入廣告 tracking。
+7. 點擊 Post Hero 後確認開啟 DetailModal。
+8. 點擊關閉後，確認本次 session 不再顯示 Hero 或 Hero skeleton。
 
 ### Sponsored Ads 曝光 / 點擊追蹤 MVP
 

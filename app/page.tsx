@@ -8,7 +8,7 @@ import { FilterBar } from "@/components/feed/FilterBar";
 import { MasonryGrid } from "@/components/feed/MasonryGrid";
 import { Navbar } from "@/components/global/Navbar";
 import { Toast } from "@/components/global/Toast";
-import { HeroBanner } from "@/components/hero/HeroBanner";
+import { HeroBanner, HeroBannerSkeleton } from "@/components/hero/HeroBanner";
 import { DetailModal } from "@/components/modals/DetailModal";
 import { PostModal } from "@/components/modals/PostModal";
 import { ToastProvider, useToast } from "@/hooks/useToast";
@@ -31,6 +31,8 @@ import type {
   Post,
   SponsoredPost,
 } from "@/types/foodie";
+
+const HERO_BANNER_DISMISSED_STORAGE_KEY = "foodiefeed_hero_banner_dismissed";
 
 function createMockPosts(): Post[] {
   const now = Date.now();
@@ -144,6 +146,27 @@ function matchesCurrentFeedFilter(post: Post, filter: FeedFilterState): boolean 
   return true;
 }
 
+function isHeroPostFallbackCandidate(
+  post: Post,
+  filter: FeedFilterState,
+): boolean {
+  const hasRequiredContent = [
+    post.title,
+    post.name,
+    post.city,
+    post.district,
+    post.address,
+  ].every((value) => value.trim().length > 0);
+  const hasEnoughEngagement = (post.comment_count ?? 0) >= 1 || post.likes >= 5;
+
+  return (
+    !isExpired(post.expiry) &&
+    hasRequiredContent &&
+    hasEnoughEngagement &&
+    matchesCurrentFeedFilter(post, filter)
+  );
+}
+
 function HomeContent() {
   const initialPosts = useMemo(() => createMockPosts(), []);
   const [feedPosts, setFeedPosts] = useState<Post[]>(initialPosts);
@@ -153,6 +176,10 @@ function HomeContent() {
   const [heroSponsoredPost, setHeroSponsoredPost] =
     useState<SponsoredPost | null>(null);
   const [isFeedLoading, setIsFeedLoading] = useState(true);
+  const [isHeroSponsoredLoading, setIsHeroSponsoredLoading] = useState(true);
+  const [isHeroDismissed, setIsHeroDismissed] = useState(false);
+  const [hasResolvedHeroDismissal, setHasResolvedHeroDismissal] =
+    useState(false);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [isMyPostsOpen, setIsMyPostsOpen] = useState(false);
@@ -205,9 +232,8 @@ function HomeContent() {
       return null;
     }
 
-    const candidates = feedPosts.filter(
-      (post) =>
-        !isExpired(post.expiry) && matchesCurrentFeedFilter(post, feedFilter),
+    const candidates = feedPosts.filter((post) =>
+      isHeroPostFallbackCandidate(post, feedFilter),
     );
 
     return (
@@ -232,6 +258,27 @@ function HomeContent() {
     );
   }, [feedPosts, feedFilter, heroSponsoredPost]);
 
+  const shouldRenderHeroArea = hasResolvedHeroDismissal && !isHeroDismissed;
+  const isHeroLoading =
+    shouldRenderHeroArea && (isFeedLoading || isHeroSponsoredLoading);
+
+  useEffect(() => {
+    try {
+      setIsHeroDismissed(
+        window.sessionStorage.getItem(HERO_BANNER_DISMISSED_STORAGE_KEY) ===
+          "true",
+      );
+    } catch (error) {
+      console.warn(
+        error instanceof Error
+          ? `Failed to read hero banner session state: ${error.message}`
+          : "Failed to read hero banner session state",
+      );
+    } finally {
+      setHasResolvedHeroDismissal(true);
+    }
+  }, []);
+
   useEffect(() => {
     async function loadPosts() {
       setIsFeedLoading(true);
@@ -252,24 +299,37 @@ function HomeContent() {
   }, []);
 
   async function loadSponsoredPosts() {
+    setIsHeroSponsoredLoading(true);
     const adFilters = {
       city: feedFilter.city,
       district: feedFilter.district,
       category: feedFilter.category === "all" ? undefined : feedFilter.category,
     };
-    const [activeSponsoredPosts, activeHeroSponsoredPosts] = await Promise.all([
-      fetchActiveSponsoredPosts({
-        ...adFilters,
-        placement: "feed",
-      }),
-      fetchActiveSponsoredPosts({
-        ...adFilters,
-        placement: "hero",
-      }),
-    ]);
 
-    setSponsoredPosts(activeSponsoredPosts);
-    setHeroSponsoredPost(activeHeroSponsoredPosts[0] ?? null);
+    try {
+      const [activeSponsoredPosts, activeHeroSponsoredPosts] = await Promise.all([
+        fetchActiveSponsoredPosts({
+          ...adFilters,
+          placement: "feed",
+        }),
+        fetchActiveSponsoredPosts({
+          ...adFilters,
+          placement: "hero",
+        }),
+      ]);
+
+      setSponsoredPosts(activeSponsoredPosts);
+      setHeroSponsoredPost(activeHeroSponsoredPosts[0] ?? null);
+    } catch (error) {
+      console.warn(
+        error instanceof Error
+          ? `Failed to load sponsored placements: ${error.message}`
+          : "Failed to load sponsored placements",
+      );
+      setHeroSponsoredPost(null);
+    } finally {
+      setIsHeroSponsoredLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -595,6 +655,20 @@ function HomeContent() {
     setFeedFilter((current) => ({ ...current, sortBy }));
   }
 
+  function handleDismissHeroBanner() {
+    setIsHeroDismissed(true);
+
+    try {
+      window.sessionStorage.setItem(HERO_BANNER_DISMISSED_STORAGE_KEY, "true");
+    } catch (error) {
+      console.warn(
+        error instanceof Error
+          ? `Failed to persist hero banner dismissal: ${error.message}`
+          : "Failed to persist hero banner dismissal",
+      );
+    }
+  }
+
   return (
     <main className="min-h-screen">
       <Navbar
@@ -678,14 +752,20 @@ function HomeContent() {
         onSortChange={handleSortChange}
         onReset={handleResetFeedFilter}
       />
-      {!isFeedLoading && heroSponsoredPost ? (
-        <HeroBanner variant="sponsored" ad={heroSponsoredPost} />
+      {isHeroLoading ? <HeroBannerSkeleton /> : null}
+      {shouldRenderHeroArea && !isHeroLoading && heroSponsoredPost ? (
+        <HeroBanner
+          variant="sponsored"
+          ad={heroSponsoredPost}
+          onDismiss={handleDismissHeroBanner}
+        />
       ) : null}
-      {!isFeedLoading && !heroSponsoredPost && heroPost ? (
+      {shouldRenderHeroArea && !isHeroLoading && !heroSponsoredPost && heroPost ? (
         <HeroBanner
           variant="post"
           post={heroPost}
           onPostClick={handlePostClick}
+          onDismiss={handleDismissHeroBanner}
         />
       ) : null}
       <MasonryGrid
