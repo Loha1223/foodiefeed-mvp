@@ -13,6 +13,43 @@ npm run dev
 
 沒有 `.env.local` 時，首頁會使用 mockPosts fallback，仍可正常啟動。
 
+## CI / QA Gate
+
+GitHub Actions 會在以下情境自動執行最低限度品質檢查：
+
+- push 到 `main`
+- pull request 到 `main`
+
+Workflow：`.github/workflows/ci.yml`
+
+CI 會依序執行：
+
+```bash
+npm ci
+npm run typecheck
+npm run build
+```
+
+CI 使用 Node.js 20 與 npm cache。workflow 不包含 Supabase secret，也不需要真實 Supabase env 才能完成 build。
+
+本機提交前建議手動執行：
+
+```bash
+npm run typecheck
+npm run build
+```
+
+Pre-push local checklist：
+
+1. `npm run typecheck`
+2. `npm run build`
+3. 本機手動測首頁、發文、留言、按讚、Admin、Sponsored Ads。
+4. `git status` 確認 `.env.local` 未被提交。
+
+若 CI 失敗，不建議合併或部署。Vercel 部署前仍建議確認 GitHub Actions 通過。
+
+CI 目前不測真實 Supabase CRUD、Auth、Storage、RLS 或 E2E flow；這些仍需依照 smoke test checklist 手動驗證。
+
 ## Supabase 設定與測試
 
 ### .env.local
@@ -22,6 +59,7 @@ npm run dev
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=你的 Supabase Project URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY=你的 Supabase anon key
+NEXT_PUBLIC_SITE_URL=你的正式網站 URL
 ```
 
 ### SQL / migrations 執行順序
@@ -107,6 +145,106 @@ http://localhost:3001
 - `comments.user_id` 會記錄留言者。
 - Storage 上傳路徑會使用 `posts/{user.id}/{timestamp}-{random}.{ext}`。
 - RLS 已收斂為 ownership-based policy。
+
+## Production Config Checklist
+
+### Vercel Environment Variables
+
+Production 與 Preview 環境都建議設定：
+
+```txt
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_SITE_URL
+```
+
+`NEXT_PUBLIC_SITE_URL` 建議使用正式 production URL，例如：
+
+```txt
+https://your-domain.example
+```
+
+若尚未設定，程式會 fallback 到：
+
+```txt
+https://foodiefeed-mvp.vercel.app
+```
+
+### Supabase Auth Redirect URLs
+
+請到 Supabase Dashboard -> Authentication -> URL Configuration 確認：
+
+- `http://localhost:3000`
+- `http://localhost:3001`
+- Vercel production URL
+- 若有自訂網域，加入自訂網域
+- 若使用 Vercel Preview Deployments，需明確決定是否允許 preview URL 登入
+
+### Security Headers
+
+`next.config.mjs` 已加入基礎 security headers：
+
+- `X-Frame-Options: DENY`
+- `X-Content-Type-Options: nosniff`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()`
+- `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`
+- `Content-Security-Policy`
+
+目前 CSP 是可部署的溫和版本：
+
+- 允許 `self` scripts/styles。
+- 暫保留 `unsafe-inline` / `unsafe-eval`，避免破壞 Next.js runtime。
+- `img-src` 允許 `self`、`data:`、`blob:`、`https:`，支援 Supabase Storage 與外部 `image_url`。
+- `connect-src` 允許 Supabase HTTPS / WSS，以及 localhost dev websocket。
+- `frame-ancestors 'none'` 防止被 iframe 嵌入。
+
+若未來收緊 CSP，需逐步驗證：
+
+- Supabase Auth / API / Storage
+- Vercel production assets
+- 外部 `PostCard` / `SponsoredCard` 圖片 URL
+- Magic link 登入流程
+
+HSTS 適合正式 HTTPS 網域。若改用自訂網域，需先確認全站 HTTPS 正常，再保留 preload 設定。
+
+### SEO
+
+已加入：
+
+- `metadataBase`
+- `openGraph.url`
+- `openGraph.siteName`
+- `app/robots.ts`
+- `app/sitemap.ts`
+
+目前 sitemap 只列首頁，因為 posts 尚未有獨立 detail route。正式自訂網域上線時，請同步更新 `NEXT_PUBLIC_SITE_URL`。
+
+### Custom SMTP
+
+Supabase 內建 Email provider 有 rate limit。正式上線建議設定 Custom SMTP，例如：
+
+- Resend
+- Postmark
+- SendGrid
+- Brevo
+
+本階段不實作 SMTP，只列為 production checklist。
+
+### Post-deploy QA
+
+每次 production deploy 後建議檢查：
+
+- Magic link 登入
+- 發文
+- 留言
+- 圖片上傳
+- 按讚防重複
+- SponsoredCard 曝光 / 點擊
+- Admin 廣告管理
+- Admin 廣告成效
+- `/robots.txt`
+- `/sitemap.xml`
 
 ### 正式 RLS
 
