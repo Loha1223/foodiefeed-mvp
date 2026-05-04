@@ -8,6 +8,7 @@ import { FilterBar } from "@/components/feed/FilterBar";
 import { MasonryGrid } from "@/components/feed/MasonryGrid";
 import { Navbar } from "@/components/global/Navbar";
 import { Toast } from "@/components/global/Toast";
+import { HeroBanner } from "@/components/hero/HeroBanner";
 import { DetailModal } from "@/components/modals/DetailModal";
 import { PostModal } from "@/components/modals/PostModal";
 import { ToastProvider, useToast } from "@/hooks/useToast";
@@ -149,6 +150,8 @@ function HomeContent() {
   const [myPosts, setMyPosts] = useState<Post[]>([]);
   const [adminPosts, setAdminPosts] = useState<Post[]>([]);
   const [sponsoredPosts, setSponsoredPosts] = useState<SponsoredPost[]>([]);
+  const [heroSponsoredPost, setHeroSponsoredPost] =
+    useState<SponsoredPost | null>(null);
   const [isFeedLoading, setIsFeedLoading] = useState(true);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -197,6 +200,38 @@ function HomeContent() {
     return sorted;
   }, [feedPosts, feedFilter]);
 
+  const heroPost = useMemo(() => {
+    if (heroSponsoredPost) {
+      return null;
+    }
+
+    const candidates = feedPosts.filter(
+      (post) =>
+        !isExpired(post.expiry) && matchesCurrentFeedFilter(post, feedFilter),
+    );
+
+    return (
+      [...candidates].sort((a, b) => {
+        const commentDifference =
+          (b.comment_count ?? 0) - (a.comment_count ?? 0);
+
+        if (commentDifference !== 0) {
+          return commentDifference;
+        }
+
+        const likeDifference = b.likes - a.likes;
+
+        if (likeDifference !== 0) {
+          return likeDifference;
+        }
+
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      })[0] ?? null
+    );
+  }, [feedPosts, feedFilter, heroSponsoredPost]);
+
   useEffect(() => {
     async function loadPosts() {
       setIsFeedLoading(true);
@@ -217,12 +252,24 @@ function HomeContent() {
   }, []);
 
   async function loadSponsoredPosts() {
-    const activeSponsoredPosts = await fetchActiveSponsoredPosts({
+    const adFilters = {
       city: feedFilter.city,
       district: feedFilter.district,
       category: feedFilter.category === "all" ? undefined : feedFilter.category,
-    });
+    };
+    const [activeSponsoredPosts, activeHeroSponsoredPosts] = await Promise.all([
+      fetchActiveSponsoredPosts({
+        ...adFilters,
+        placement: "feed",
+      }),
+      fetchActiveSponsoredPosts({
+        ...adFilters,
+        placement: "hero",
+      }),
+    ]);
+
     setSponsoredPosts(activeSponsoredPosts);
+    setHeroSponsoredPost(activeHeroSponsoredPosts[0] ?? null);
   }
 
   useEffect(() => {
@@ -631,6 +678,16 @@ function HomeContent() {
         onSortChange={handleSortChange}
         onReset={handleResetFeedFilter}
       />
+      {!isFeedLoading && heroSponsoredPost ? (
+        <HeroBanner variant="sponsored" ad={heroSponsoredPost} />
+      ) : null}
+      {!isFeedLoading && !heroSponsoredPost && heroPost ? (
+        <HeroBanner
+          variant="post"
+          post={heroPost}
+          onPostClick={handlePostClick}
+        />
+      ) : null}
       <MasonryGrid
         isLoading={isFeedLoading}
         posts={filteredFeedPosts}

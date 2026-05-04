@@ -581,13 +581,20 @@ export function AdminAdManagerPanel({
                     </label>
                     <label className="grid gap-1 text-sm font-medium text-stone-700">
                       版位
-                      <input
+                      <select
                         value={form.placement}
                         onChange={(event) =>
                           updateForm("placement", event.target.value)
                         }
                         className="rounded-md border border-stone-300 px-3 py-2 font-normal"
-                      />
+                      >
+                        <option value="feed">feed</option>
+                        <option value="hero">hero</option>
+                        <option value="detail">detail</option>
+                      </select>
+                      <span className="text-xs leading-5 text-stone-500">
+                        feed：Feed 原生廣告卡；hero：首頁橫幅 Banner；detail：詳情頁預留。
+                      </span>
                     </label>
                   </div>
                 </fieldset>

@@ -391,6 +391,37 @@ RLS：
 
 Feed 會在每 6 張自然情報卡後插入 1 張 SponsoredCard。每筆廣告最多顯示一次，不會在同一批 feed 中循環重複曝光。廣告卡會清楚標示「贊助」，並使用與 PostCard 不同的視覺樣式，避免偽裝成自然情報。
 
+### 首頁 Hero Banner MVP
+
+首頁 FilterBar 下方會顯示一則 Hero Banner。顯示優先序：
+
+1. 優先顯示 active `sponsored_posts` 中 `placement = 'hero'` 且 priority 最高的廣告。
+2. 若沒有可用 hero sponsored ad，fallback 到目前 active posts 中的熱門情報。
+3. 若沒有 hero ad 且沒有 active post，不顯示 Hero Banner，首頁仍正常顯示。
+
+Sponsored Hero：
+
+- 清楚標示「贊助｜本週推薦」。
+- 使用 `brand_name`、`title`、`description`、`image_url`、`target_url`。
+- 曝光會寫入 `ad_impressions`，`placement = 'hero'`。
+- 點擊 CTA 會寫入 `ad_clicks`，`placement = 'hero'`。
+- 可從 Admin 廣告管理新增，將 `placement` 設為 `hero`。
+
+Post Hero：
+
+- 標示「熱門情報」，不可標示為贊助。
+- 不記錄廣告 tracking。
+- 點擊 Banner 或「查看情報」會開啟既有 DetailModal。
+- 從目前篩選後的 active posts 挑選，排序依序為 `comment_count desc`、`likes desc`、`created_at desc`。
+
+限制：
+
+- 本階段不做自動輪播。
+- 同時間只顯示一則 Hero。
+- 不做 A/B test。
+- 不做進階熱門演算法權重。
+- 不做 post detail route。
+
 ### Sponsored Ads 曝光 / 點擊追蹤 MVP
 
 廣告追蹤使用兩張資料表：
@@ -523,7 +554,7 @@ Admin 成效數字採去重估算：
 - `image_url` 若有值，必須是有效的 `http://` 或 `https://` URL。
 - `target_url` 若有值，必須是有效的 `http://` 或 `https://` URL。
 - `priority` 必須是數字。
-- `placement` 空白時預設使用 `feed`。
+- `placement` 空白時預設使用 `feed`；目前支援 `feed`、`hero`、`detail`，其中 `hero` 會顯示在首頁 Hero Banner。
 
 素材與時間：
 

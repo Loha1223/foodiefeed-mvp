@@ -60,6 +60,7 @@ type SponsoredPostFilters = {
   city?: string;
   district?: string;
   category?: string;
+  placement?: "feed" | "hero" | "detail";
 };
 
 type TrackAdImpressionInput = {
@@ -274,10 +275,10 @@ function buildNullOrEqualsFilter(column: string, value?: string) {
   const trimmedValue = value?.trim();
 
   if (!trimmedValue) {
-    return `${column}.is.null`;
+    return `${column}.is.null,${column}.eq.`;
   }
 
-  return `${column}.is.null,${column}.eq.${trimmedValue}`;
+  return `${column}.is.null,${column}.eq.,${column}.eq.${trimmedValue}`;
 }
 
 function truncateTrackingText(value: string | undefined, maxLength: number) {
@@ -342,12 +343,13 @@ export async function fetchActiveSponsoredPosts(
   }
 
   const now = new Date().toISOString();
+  const placement = filters.placement ?? "feed";
 
   let query = supabase
     .from("sponsored_posts")
     .select("*")
     .eq("is_active", true)
-    .eq("placement", "feed")
+    .eq("placement", placement)
     .lte("starts_at", now)
     .gte("ends_at", now);
 
