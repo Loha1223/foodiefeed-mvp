@@ -80,48 +80,48 @@ export function FilterBar({
   }, [filter]);
 
   return (
-    <section className="mx-auto max-w-6xl px-4 pt-4 sm:px-6 sm:pt-5">
-      <div className="space-y-3 rounded-lg border border-stone-200 bg-white/80 p-3 shadow-sm sm:p-4">
+    <section className="mx-auto max-w-6xl px-4 pt-2 sm:px-6 sm:pt-3">
+      <div className="space-y-2 rounded-md border border-stone-200/90 bg-stone-50/60 p-2 sm:p-2.5">
         <div>
-          <p className="text-xs font-medium text-stone-500 sm:text-sm">
+          <p className="text-[11px] font-medium text-stone-500 sm:text-xs">
             即時情報探索
           </p>
-          <p className="mt-1 text-base font-semibold text-stone-900 sm:text-lg">
-            共 {totalCount} 筆，篩選後 {filteredCount} 筆
+          <p className="mt-0.5 text-sm font-medium text-stone-800 sm:text-[15px]">
+            共 {totalCount} 筆 · 篩選後 {filteredCount} 筆
           </p>
           {isLoading ? (
-            <p className="mt-1 text-xs text-stone-500">情報載入中，請稍候...</p>
+            <p className="mt-0.5 text-[11px] text-stone-500 sm:text-xs">
+              情報載入中，請稍候...
+            </p>
           ) : (
-            <p className="mt-1 text-xs text-stone-500">
+            <p className="mt-0.5 text-[11px] text-stone-500 sm:text-xs">
               先看最新情報，再依需求展開進階篩選。
             </p>
           )}
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-          <label className="block text-sm text-stone-600">
-            關鍵字搜尋
-            <input
-              type="text"
-              value={filter.keyword}
-              onChange={(event) => onKeywordChange(event.target.value)}
-              disabled={isLoading}
-              placeholder="搜尋標題、店名、地址、地區"
-              className="mt-1.5 w-full rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-red-500 disabled:cursor-not-allowed disabled:bg-stone-100"
-            />
-          </label>
+        <div className="flex flex-nowrap items-end gap-2">
+          <input
+            type="text"
+            value={filter.keyword}
+            onChange={(event) => onKeywordChange(event.target.value)}
+            disabled={isLoading}
+            placeholder="關鍵字：標題、店名、地址…"
+            aria-label="關鍵字搜尋"
+            className="min-w-0 flex-1 rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-red-500 disabled:cursor-not-allowed disabled:bg-stone-100 sm:px-3 sm:py-2"
+          />
           <button
             type="button"
             onClick={() => setIsExpanded((expanded) => !expanded)}
-            className="h-fit rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
+            className="shrink-0 rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50 sm:px-3 sm:py-2 sm:text-sm"
           >
-            {isExpanded ? "收合進階篩選" : "展開進階篩選"}
+            {isExpanded ? "收合" : "進階"}
           </button>
         </div>
 
-        <div className="rounded-md bg-stone-50 px-3 py-2 text-xs text-stone-600">
+        <div className="rounded border border-stone-200/80 bg-white/70 px-2 py-1.5 text-[10px] leading-relaxed text-stone-500 sm:text-[11px]">
           {activeSummary.conditionParts.length > 0 ? (
-            <p className="flex flex-wrap gap-x-3 gap-y-1">
+            <p className="flex flex-wrap gap-x-2 gap-y-0.5">
               {activeSummary.conditionParts.map((summary) => (
                 <span key={summary}>{summary}</span>
               ))}

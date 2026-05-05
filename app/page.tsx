@@ -747,6 +747,22 @@ function HomeContent() {
           </div>
         </div>
       </section>
+      {isHeroLoading ? <HeroBannerSkeleton /> : null}
+      {shouldRenderHeroArea && !isHeroLoading && heroSponsoredPost ? (
+        <HeroBanner
+          variant="sponsored"
+          ad={heroSponsoredPost}
+          onDismiss={handleDismissHeroBanner}
+        />
+      ) : null}
+      {shouldRenderHeroArea && !isHeroLoading && !heroSponsoredPost && heroPost ? (
+        <HeroBanner
+          variant="post"
+          post={heroPost}
+          onPostClick={handlePostClick}
+          onDismiss={handleDismissHeroBanner}
+        />
+      ) : null}
       <FilterBar
         filter={feedFilter}
         isLoading={isFeedLoading}
@@ -774,22 +790,6 @@ function HomeContent() {
         onSortChange={handleSortChange}
         onReset={handleResetFeedFilter}
       />
-      {isHeroLoading ? <HeroBannerSkeleton /> : null}
-      {shouldRenderHeroArea && !isHeroLoading && heroSponsoredPost ? (
-        <HeroBanner
-          variant="sponsored"
-          ad={heroSponsoredPost}
-          onDismiss={handleDismissHeroBanner}
-        />
-      ) : null}
-      {shouldRenderHeroArea && !isHeroLoading && !heroSponsoredPost && heroPost ? (
-        <HeroBanner
-          variant="post"
-          post={heroPost}
-          onPostClick={handlePostClick}
-          onDismiss={handleDismissHeroBanner}
-        />
-      ) : null}
       <MasonryGrid
         isLoading={isFeedLoading}
         posts={filteredFeedPosts}

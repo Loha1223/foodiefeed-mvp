@@ -123,7 +123,7 @@ export function HeroBanner(props: HeroBannerProps) {
   }
 
   return (
-    <section className="mx-auto max-w-6xl px-4 pt-4 sm:px-6 sm:pt-5">
+    <section className="mx-auto max-w-6xl px-4 pt-3 sm:px-6 sm:pt-4">
       <article
         ref={bannerRef}
         role={props.variant === "post" ? "button" : undefined}
@@ -138,7 +138,7 @@ export function HeroBanner(props: HeroBannerProps) {
             handlePostClick();
           }
         }}
-        className={`relative grid overflow-hidden rounded-lg border shadow-sm md:grid-cols-[1.08fr_0.92fr] ${
+        className={`relative grid max-h-none overflow-hidden rounded-lg border shadow-sm md:h-[240px] md:max-h-[260px] md:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] ${
           props.variant === "sponsored"
             ? "border-amber-200 bg-amber-50"
             : "border-stone-200 bg-white"
@@ -154,13 +154,13 @@ export function HeroBanner(props: HeroBannerProps) {
             關閉
           </button>
         ) : null}
-        <div className="relative min-h-52 overflow-hidden bg-stone-100 md:min-h-72">
+        <div className="relative h-44 min-h-0 overflow-hidden bg-stone-100 md:h-full md:min-h-0">
           <img
             src={displayImageUrl}
             alt={
               props.variant === "sponsored" ? props.ad.title : props.post.title
             }
-            className="absolute inset-0 h-full w-full object-cover transition duration-300 hover:scale-105"
+            className="absolute inset-0 h-full w-full object-cover object-center"
             onError={() => setHasImageError(true)}
           />
           <span
@@ -172,38 +172,44 @@ export function HeroBanner(props: HeroBannerProps) {
           </span>
         </div>
 
-        <div className="flex flex-col justify-center gap-4 p-5 sm:p-6 lg:p-7">
+        <div className="flex min-h-0 flex-col justify-center gap-3 p-4 sm:p-5 md:overflow-y-auto md:py-4">
           {props.variant === "sponsored" ? (
             <>
-              <div className="space-y-2.5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-amber-800 sm:text-sm">
+              <div className="min-h-0 space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
                   {props.ad.brand_name}
                 </p>
-                <h1 className="text-xl font-bold leading-tight text-stone-950 sm:text-3xl">
+                <h1 className="line-clamp-2 text-lg font-bold leading-snug text-stone-950 sm:text-xl md:text-2xl">
                   {props.ad.title}
                 </h1>
                 {props.ad.description ? (
-                  <p className="text-sm leading-6 text-stone-600">
+                  <p className="line-clamp-2 text-xs leading-5 text-stone-600 sm:text-sm sm:leading-6">
                     {props.ad.description}
                   </p>
                 ) : null}
               </div>
 
-              {props.ad.target_url ? (
-                <a
-                  href={props.ad.target_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={handleSponsoredCtaClick}
-                  className="w-fit rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-stone-800"
-                >
-                  查看活動
-                </a>
-              ) : null}
+              <div className="mt-auto flex flex-shrink-0 flex-wrap items-center gap-2 pt-1">
+                {props.ad.target_url ? (
+                  <a
+                    href={props.ad.target_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={handleSponsoredCtaClick}
+                    className="inline-flex rounded-md bg-stone-950 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-stone-800"
+                  >
+                    查看活動
+                  </a>
+                ) : (
+                  <p className="text-xs font-medium text-amber-900/80">
+                    下滑情報牆瀏覽更多限時內容
+                  </p>
+                )}
+              </div>
             </>
           ) : (
             <>
-              <div className="space-y-2.5">
+              <div className="min-h-0 space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-red-700">
                   限時美食情報站
                 </p>
@@ -217,32 +223,35 @@ export function HeroBanner(props: HeroBannerProps) {
                     {props.post.city} / {props.post.district}
                   </span>
                 </div>
-                <h1 className="text-xl font-bold leading-tight text-stone-950 sm:text-3xl">
+                <h1 className="line-clamp-2 text-lg font-bold leading-snug text-stone-950 sm:text-xl md:text-2xl">
                   {props.post.title}
                 </h1>
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   <p className="text-sm font-semibold text-stone-800">
                     {props.post.name}
                   </p>
-                  <p className="text-sm leading-6 text-stone-500">
+                  <p className="line-clamp-2 text-xs leading-5 text-stone-500 sm:text-sm sm:leading-6">
                     {props.post.address}
                   </p>
                 </div>
-                <p className="text-sm text-stone-600">
+                <p className="line-clamp-2 text-xs text-stone-600 sm:text-sm">
                   探索快閃、限定與在地優惠，現在就掌握最新情報。
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handlePostClick();
-                }}
-                className="w-fit rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
-              >
-                查看限時情報
-              </button>
+              <div className="mt-auto flex flex-shrink-0 flex-wrap items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handlePostClick();
+                  }}
+                  className="inline-flex rounded-md bg-red-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                >
+                  查看限時情報
+                </button>
+                <span className="text-xs text-stone-500">或點擊圖片區查看</span>
+              </div>
             </>
           )}
         </div>
@@ -253,15 +262,15 @@ export function HeroBanner(props: HeroBannerProps) {
 
 export function HeroBannerSkeleton() {
   return (
-    <section className="mx-auto max-w-6xl px-4 pt-5 sm:px-6">
-      <div className="grid overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm md:grid-cols-[1.08fr_0.92fr]">
-        <div className="min-h-36 animate-pulse bg-gradient-to-br from-stone-100 to-stone-200 sm:min-h-44 md:min-h-52" />
-        <div className="space-y-3 p-5 sm:p-6">
-          <div className="h-4 w-24 animate-pulse rounded bg-stone-200" />
-          <div className="h-7 w-4/5 animate-pulse rounded bg-stone-200" />
-          <div className="h-4 w-full animate-pulse rounded bg-stone-200" />
-          <div className="h-4 w-2/3 animate-pulse rounded bg-stone-200" />
-          <div className="h-9 w-24 animate-pulse rounded bg-stone-200" />
+    <section className="mx-auto max-w-6xl px-4 pt-3 sm:px-6 sm:pt-4">
+      <div className="grid max-h-none overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm md:h-[240px] md:max-h-[260px] md:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]">
+        <div className="h-44 animate-pulse bg-gradient-to-br from-stone-100 to-stone-200 md:h-full md:min-h-0" />
+        <div className="flex flex-col justify-center space-y-2.5 p-4 sm:p-5 md:py-4">
+          <div className="h-3 w-20 animate-pulse rounded bg-stone-200" />
+          <div className="h-6 w-4/5 animate-pulse rounded bg-stone-200" />
+          <div className="h-3 w-full animate-pulse rounded bg-stone-200" />
+          <div className="h-3 w-2/3 animate-pulse rounded bg-stone-200" />
+          <div className="h-8 w-28 animate-pulse rounded bg-stone-200" />
         </div>
       </div>
     </section>
