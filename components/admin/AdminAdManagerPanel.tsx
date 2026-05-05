@@ -18,6 +18,7 @@ import {
   MAX_SPONSORED_AD_IMAGE_SIZE_BYTES,
   uploadSponsoredAdImage,
 } from "@/lib/adStorage";
+import { ImageCropperModal } from "@/components/shared/ImageCropperModal";
 import type {
   CreateSponsoredPostInput,
   SponsoredPost,
@@ -145,6 +146,33 @@ function getUrlInlineError(value: string, label: string) {
   return `${label} 必須是有效的 http:// 或 https:// URL`;
 }
 
+function getAdImageCropConfig(placement: string) {
+  if (placement === "hero") {
+    return {
+      aspectRatio: 2 / 1,
+      helperText: "建議 1200 × 600，橫式圖片",
+      ratioLabel: "2:1",
+      title: "裁切 Hero Banner 圖片",
+    };
+  }
+
+  if (placement === "detail") {
+    return {
+      aspectRatio: 4 / 3,
+      helperText: "詳情頁廣告本階段先使用 4:3",
+      ratioLabel: "4:3",
+      title: "裁切詳情頁廣告圖片",
+    };
+  }
+
+  return {
+    aspectRatio: 4 / 3,
+    helperText: "建議 1200 × 900，4:3",
+    ratioLabel: "4:3",
+    title: "裁切 Feed 廣告圖片",
+  };
+}
+
 export function AdminAdManagerPanel({
   isAdmin,
   isOpen,
@@ -161,6 +189,10 @@ export function AdminAdManagerPanel({
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [pendingImageCropFile, setPendingImageCropFile] =
+    useState<File | null>(null);
+  const [selectedImageModeMessage, setSelectedImageModeMessage] = useState("");
+  const [isImageCropperOpen, setIsImageCropperOpen] = useState(false);
   const [localImagePreviewUrl, setLocalImagePreviewUrl] = useState("");
   const [imagePreviewFailed, setImagePreviewFailed] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<
@@ -176,6 +208,7 @@ export function AdminAdManagerPanel({
   const imageUrlError = getUrlInlineError(form.image_url, "image_url");
   const displayedImageUrlError = selectedImageFile ? null : imageUrlError;
   const targetUrlError = getUrlInlineError(form.target_url, "target_url");
+  const adImageCropConfig = getAdImageCropConfig(form.placement);
   const imageSourceMessage = selectedImageFile
     ? "將優先使用上傳圖片"
     : imageUrl
@@ -278,6 +311,9 @@ export function AdminAdManagerPanel({
     setFormError(null);
     setSuccessMessage(null);
     setSelectedImageFile(null);
+    setPendingImageCropFile(null);
+    setSelectedImageModeMessage("");
+    setIsImageCropperOpen(false);
     setLocalImagePreviewUrl("");
     setImagePreviewFailed(false);
     setSubmitStatus("idle");
@@ -293,6 +329,9 @@ export function AdminAdManagerPanel({
     setFormError(null);
     setSuccessMessage(null);
     setSelectedImageFile(null);
+    setPendingImageCropFile(null);
+    setSelectedImageModeMessage("");
+    setIsImageCropperOpen(false);
     setLocalImagePreviewUrl("");
     setImagePreviewFailed(false);
 
@@ -306,12 +345,14 @@ export function AdminAdManagerPanel({
 
     if (!file) {
       setSelectedImageFile(null);
+      setSelectedImageModeMessage("");
       return;
     }
 
     if (!ALLOWED_SPONSORED_AD_IMAGE_TYPES.includes(file.type)) {
       setFormError("廣告圖片格式僅支援 JPG、PNG 或 WebP");
       setSelectedImageFile(null);
+      setSelectedImageModeMessage("");
       event.target.value = "";
       return;
     }
@@ -319,14 +360,43 @@ export function AdminAdManagerPanel({
     if (file.size > MAX_SPONSORED_AD_IMAGE_SIZE_BYTES) {
       setFormError("廣告圖片大小不可超過 5MB");
       setSelectedImageFile(null);
+      setSelectedImageModeMessage("");
       event.target.value = "";
       return;
     }
 
     setFormError(null);
     setSuccessMessage(null);
-    setSelectedImageFile(file);
+    setPendingImageCropFile(file);
+    setIsImageCropperOpen(true);
     setImagePreviewFailed(false);
+  }
+
+  function closeImageCropperWithoutChanges() {
+    setPendingImageCropFile(null);
+    setIsImageCropperOpen(false);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  function useOriginalAdImage(file: File) {
+    setSelectedImageFile(file);
+    setSelectedImageModeMessage("使用原圖，前台可能裁切邊緣");
+    setPendingImageCropFile(null);
+    setIsImageCropperOpen(false);
+    setFormError(null);
+  }
+
+  function useCroppedAdImage(file: File) {
+    setSelectedImageFile(file);
+    setSelectedImageModeMessage(
+      `已套用 ${getAdImageCropConfig(form.placement).ratioLabel} 裁切`,
+    );
+    setPendingImageCropFile(null);
+    setIsImageCropperOpen(false);
+    setFormError(null);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -621,6 +691,7 @@ export function AdminAdManagerPanel({
                   </label>
                   <p className="rounded-md bg-white px-3 py-2 text-xs font-medium text-stone-600 ring-1 ring-stone-200">
                     圖片來源：{imageSourceMessage}
+                    {selectedImageModeMessage ? `；${selectedImageModeMessage}` : ""}
                   </p>
                   <div className="overflow-hidden rounded-md border border-stone-200 bg-white">
                     {previewImageUrl ? (
@@ -919,6 +990,16 @@ export function AdminAdManagerPanel({
           </div>
         ) : null}
       </div>
+      <ImageCropperModal
+        file={pendingImageCropFile}
+        isOpen={isImageCropperOpen}
+        aspectRatio={adImageCropConfig.aspectRatio}
+        title={adImageCropConfig.title}
+        helperText={adImageCropConfig.helperText}
+        onCancel={closeImageCropperWithoutChanges}
+        onUseOriginal={useOriginalAdImage}
+        onCropComplete={useCroppedAdImage}
+      />
     </section>
   );
 }

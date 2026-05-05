@@ -15,6 +15,7 @@ import {
   MAX_POST_IMAGE_SIZE_BYTES,
   uploadPostImage,
 } from "@/lib/storage";
+import { ImageCropperModal } from "@/components/shared/ImageCropperModal";
 import { useToast } from "@/hooks/useToast";
 import { getUserFriendlyErrorMessage } from "@/lib/errorMessages";
 
@@ -52,6 +53,11 @@ export function PostModal({
   const { showToast } = useToast();
   const [form, setForm] = useState<CreatePostInput>(initialFormState);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [pendingCropFile, setPendingCropFile] = useState<File | null>(null);
+  const [selectedImageMode, setSelectedImageMode] = useState<
+    "cropped" | "original" | null
+  >(null);
+  const [isCropperOpen, setIsCropperOpen] = useState(false);
   const [localPreviewUrl, setLocalPreviewUrl] = useState("");
   const [isPreviewLoadFailed, setIsPreviewLoadFailed] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -141,6 +147,9 @@ export function PostModal({
   function resetForm() {
     setForm(initialFormState);
     setSelectedFile(null);
+    setPendingCropFile(null);
+    setSelectedImageMode(null);
+    setIsCropperOpen(false);
     setLocalPreviewUrl("");
     setIsPreviewLoadFailed(false);
     setErrorMessage("");
@@ -157,12 +166,14 @@ export function PostModal({
 
     if (!file) {
       setSelectedFile(null);
+      setSelectedImageMode(null);
       return;
     }
 
     if (!ALLOWED_POST_IMAGE_TYPES.includes(file.type)) {
       setErrorMessage("圖片格式僅支援 JPG、PNG 或 WebP");
       setSelectedFile(null);
+      setSelectedImageMode(null);
       event.target.value = "";
       return;
     }
@@ -170,13 +181,40 @@ export function PostModal({
     if (file.size > MAX_POST_IMAGE_SIZE_BYTES) {
       setErrorMessage("圖片大小不可超過 5MB");
       setSelectedFile(null);
+      setSelectedImageMode(null);
       event.target.value = "";
       return;
     }
 
     setErrorMessage("");
-    setSelectedFile(file);
+    setPendingCropFile(file);
+    setIsCropperOpen(true);
     setIsPreviewLoadFailed(false);
+  }
+
+  function closeCropperWithoutChanges() {
+    setPendingCropFile(null);
+    setIsCropperOpen(false);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  function useOriginalImage(file: File) {
+    setSelectedFile(file);
+    setSelectedImageMode("original");
+    setPendingCropFile(null);
+    setIsCropperOpen(false);
+    setErrorMessage("");
+  }
+
+  function useCroppedImage(file: File) {
+    setSelectedFile(file);
+    setSelectedImageMode("cropped");
+    setPendingCropFile(null);
+    setIsCropperOpen(false);
+    setErrorMessage("");
   }
 
   function validateForm(): string | null {
@@ -263,33 +301,40 @@ export function PostModal({
     : form.img?.trim()
       ? "圖片 URL"
       : "預設圖片";
+  const selectedImageModeLabel =
+    selectedImageMode === "cropped"
+      ? "已套用 4:3 裁切"
+      : selectedImageMode === "original"
+        ? "使用原圖，前台可能裁切邊緣"
+        : "";
 
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-stone-950/50 px-3 py-4 sm:items-center sm:px-4 sm:py-8"
-      onClick={handleCloseModal}
-    >
+    <>
       <div
-        className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl sm:max-h-full"
-        onClick={(event) => event.stopPropagation()}
+        className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-stone-950/50 px-3 py-4 sm:items-center sm:px-4 sm:py-8"
+        onClick={handleCloseModal}
       >
-        <div className="flex items-center justify-between border-b border-stone-200 px-5 py-4">
-          <div>
-            <h2 className="text-xl font-bold text-stone-950">發佈美食情報</h2>
-            <p className="mt-1 text-sm text-stone-500">
-              新增後會寫入 Supabase；未設定環境變數時會顯示錯誤。
-            </p>
+        <div
+          className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl sm:max-h-full"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex items-center justify-between border-b border-stone-200 px-5 py-4">
+            <div>
+              <h2 className="text-xl font-bold text-stone-950">發佈美食情報</h2>
+              <p className="mt-1 text-sm text-stone-500">
+                新增後會寫入 Supabase；未設定環境變數時會顯示錯誤。
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="rounded-md px-3 py-2 text-sm text-stone-500 hover:bg-stone-100"
+            >
+              關閉
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleCloseModal}
-            className="rounded-md px-3 py-2 text-sm text-stone-500 hover:bg-stone-100"
-          >
-            關閉
-          </button>
-        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 p-4 sm:p-5">
+          <form onSubmit={handleSubmit} className="space-y-6 p-4 sm:p-5">
           <section className="space-y-4">
             <div>
               <h3 className="text-sm font-semibold text-stone-900">基本情報</h3>
@@ -423,6 +468,11 @@ export function PostModal({
                   已選擇本機圖片，送出時會優先使用本機圖片。
                 </span>
               ) : null}
+              {selectedImageModeLabel ? (
+                <span className="mt-1 block text-xs font-normal text-amber-700">
+                  {selectedImageModeLabel}
+                </span>
+              ) : null}
             </label>
 
             <label className="block text-sm font-medium text-stone-700">
@@ -440,7 +490,7 @@ export function PostModal({
                 5MB。若選擇本機圖片，會優先使用上傳圖片。
               </span>
               <span className="mt-1 block text-xs font-normal text-stone-500">
-                前台卡片會以 cover 方式顯示，邊緣可能被裁；未來會支援裁切工具。
+                前台卡片會以 cover 方式顯示，邊緣可能被裁；可先使用裁切工具調整主視覺。
               </span>
             </label>
           </section>
@@ -498,8 +548,19 @@ export function PostModal({
                     : "送出"}
             </button>
           </div>
-        </form>
+          </form>
+        </div>
       </div>
-    </div>
+      <ImageCropperModal
+        file={pendingCropFile}
+        isOpen={isCropperOpen}
+        aspectRatio={4 / 3}
+        title="裁切限時情報圖片"
+        helperText="建議 1200 × 900，4:3；前台卡片會以 cover 顯示"
+        onCancel={closeCropperWithoutChanges}
+        onUseOriginal={useOriginalImage}
+        onCropComplete={useCroppedImage}
+      />
+    </>
   );
 }
