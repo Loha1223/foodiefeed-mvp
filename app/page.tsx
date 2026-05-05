@@ -669,6 +669,20 @@ function HomeContent() {
     }
   }
 
+  function handleRestoreHeroBanner() {
+    try {
+      window.sessionStorage.removeItem(HERO_BANNER_DISMISSED_STORAGE_KEY);
+    } catch (error) {
+      console.warn(
+        error instanceof Error
+          ? `Failed to clear hero banner session state: ${error.message}`
+          : "Failed to clear hero banner session state",
+      );
+    }
+
+    setIsHeroDismissed(false);
+  }
+
   return (
     <main className="min-h-screen">
       <Navbar
@@ -747,22 +761,41 @@ function HomeContent() {
           </div>
         </div>
       </section>
-      {isHeroLoading ? <HeroBannerSkeleton /> : null}
-      {shouldRenderHeroArea && !isHeroLoading && heroSponsoredPost ? (
-        <HeroBanner
-          variant="sponsored"
-          ad={heroSponsoredPost}
-          onDismiss={handleDismissHeroBanner}
-        />
-      ) : null}
-      {shouldRenderHeroArea && !isHeroLoading && !heroSponsoredPost && heroPost ? (
-        <HeroBanner
-          variant="post"
-          post={heroPost}
-          onPostClick={handlePostClick}
-          onDismiss={handleDismissHeroBanner}
-        />
-      ) : null}
+      {hasResolvedHeroDismissal && isHeroDismissed ? (
+        <div className="mx-auto max-w-6xl px-4 pt-2 sm:px-6 sm:pt-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 rounded-md border border-stone-200/70 bg-stone-100/40 px-2.5 py-1.5 sm:px-3 sm:py-2">
+            <p className="text-[11px] leading-snug text-stone-600 sm:text-xs">
+              本週推薦已收合
+            </p>
+            <button
+              type="button"
+              onClick={handleRestoreHeroBanner}
+              className="shrink-0 rounded border border-stone-300 bg-white px-2 py-1 text-[11px] font-medium text-stone-700 transition hover:bg-stone-50 sm:px-2.5 sm:text-xs"
+            >
+              重新顯示
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {isHeroLoading ? <HeroBannerSkeleton /> : null}
+          {shouldRenderHeroArea && !isHeroLoading && heroSponsoredPost ? (
+            <HeroBanner
+              variant="sponsored"
+              ad={heroSponsoredPost}
+              onDismiss={handleDismissHeroBanner}
+            />
+          ) : null}
+          {shouldRenderHeroArea && !isHeroLoading && !heroSponsoredPost && heroPost ? (
+            <HeroBanner
+              variant="post"
+              post={heroPost}
+              onPostClick={handlePostClick}
+              onDismiss={handleDismissHeroBanner}
+            />
+          ) : null}
+        </>
+      )}
       <FilterBar
         filter={feedFilter}
         isLoading={isFeedLoading}
