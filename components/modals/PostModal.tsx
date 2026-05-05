@@ -436,7 +436,11 @@ export function PostModal({
                 className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-stone-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-stone-700 hover:file:bg-stone-200"
               />
               <span className="mt-1 block text-xs font-normal text-stone-500">
-                支援 JPG、PNG、WebP，最大 5MB。若選擇本機圖片，會優先使用上傳圖片。
+                限時情報圖片建議 1200 × 900，4:3。支援 JPG、PNG、WebP，最大
+                5MB。若選擇本機圖片，會優先使用上傳圖片。
+              </span>
+              <span className="mt-1 block text-xs font-normal text-stone-500">
+                前台卡片會以 cover 方式顯示，邊緣可能被裁；未來會支援裁切工具。
               </span>
             </label>
           </section>

@@ -120,6 +120,10 @@ supabase/migrations/20260429048000_harden_ad_tracking.sql
 supabase/migrations/20260429049000_harden_post_likes.sql
 ```
 
+```txt
+supabase/migrations/20260429050000_create_sponsored_ad_images_bucket.sql
+```
+
 可選：加入測試資料：
 
 ```txt
@@ -391,6 +395,42 @@ RLS：
 
 Feed 會在每 6 張自然情報卡後插入 1 張 SponsoredCard。每筆廣告最多顯示一次，不會在同一批 feed 中循環重複曝光。廣告卡會清楚標示「贊助」，並使用與 PostCard 不同的視覺樣式，避免偽裝成自然情報。
 
+### 全站圖片規格與廣告圖片上傳
+
+Storage buckets：
+
+- `foodie-post-images`：限時情報圖片，由登入使用者上傳。
+- `sponsored-ad-images`：廣告圖片，由 admin 上傳。
+
+Admin 廣告管理支援兩種圖片來源：
+
+- 上傳本機圖片到 `sponsored-ad-images`。
+- 手動輸入 `image_url`。
+
+若同時選擇本機圖片並填寫 `image_url`，本機圖片會優先，上傳成功後會把 public URL 寫入 `sponsored_posts.image_url`。若兩者都沒有，前台會使用 `/placeholder-food.jpg` fallback。
+
+廣告圖片上傳規格：
+
+- 支援 JPG、PNG、WebP。
+- 單檔最大 5MB。
+- Storage path：`ads/{user.id}/{timestamp}-{random}.{ext}`。
+- 僅 admin 可 upload / delete，權限由 Supabase Storage policy 與 `public.is_admin()` 保護。
+
+建議尺寸：
+
+- 限時情報圖片：1200 × 900，4:3。
+- Hero Banner：1200 × 600，橫式圖片，2:1 或 16:9。
+- Feed 廣告卡：1200 × 900，4:3。
+
+前台 `PostCard`、`SponsoredCard`、`HeroBanner` 會以 `object-cover` 顯示圖片，容器比例不同時邊緣可能被裁切。請避免把重要文字、Logo 或優惠資訊貼近圖片邊緣。
+
+本階段限制：
+
+- 不做圖片裁切器。
+- 不做圖片壓縮。
+- 不做 Hero 輪播。
+- 廣告圖片上傳不會自動刪除舊圖；若需要清理舊素材，請由 admin 在 Supabase Storage 中確認後處理。
+
 ### 首頁 Hero Banner MVP
 
 首頁 FilterBar 下方會顯示一則 Hero Banner。顯示優先序：
@@ -587,7 +627,8 @@ Admin 成效數字採去重估算：
 
 素材與時間：
 
-- 本階段 `image_url` 只支援 URL 輸入，不支援 Supabase Storage 圖片上傳。
+- 可上傳本機圖片到 Supabase Storage，也可手動輸入 `image_url`。
+- 若同時選擇本機圖片並填寫 `image_url`，本機圖片優先。
 - `image_url` 可空白，前台 SponsoredCard 會使用 `/placeholder-food.jpg`。
 - 廣告管理表單會提供 image preview；若圖片無法預覽，前台仍會使用 fallback。
 - `starts_at` / `ends_at` 以目前瀏覽器時區輸入，儲存後由 Supabase 轉為時間戳。
@@ -611,18 +652,27 @@ Admin 成效數字採去重估算：
 
 ### Supabase Storage
 
-圖片上傳使用 bucket：
+圖片上傳使用 buckets：
 
 ```txt
 foodie-post-images
+sponsored-ad-images
 ```
 
-正式 policy 設定：
+`foodie-post-images` policy 設定：
 
 - public bucket
 - public read
 - authenticated upload to `posts/{auth.uid()}/...`
 - authenticated delete only from `posts/{auth.uid()}/...`
+
+`sponsored-ad-images` policy 設定：
+
+- public bucket
+- public read
+- authenticated admin upload to `ads/{auth.uid()}/...`
+- authenticated admin delete
+- 一般 authenticated user 不可 upload / delete
 
 可使用 migration 建立 bucket 與 policy：
 
@@ -636,6 +686,10 @@ supabase/migrations/20260429042000_allow_public_delete_foodie_post_images.sql
 
 ```txt
 supabase/migrations/20260429044000_enforce_ownership_rls.sql
+```
+
+```txt
+supabase/migrations/20260429050000_create_sponsored_ad_images_bucket.sql
 ```
 
 也可以在 Supabase Dashboard 手動建立：

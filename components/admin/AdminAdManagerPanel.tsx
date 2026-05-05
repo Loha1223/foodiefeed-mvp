@@ -1,7 +1,7 @@
 "use client";
 
-import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createSponsoredPost,
   deleteSponsoredPost,
@@ -13,6 +13,11 @@ import {
   validateSponsoredPostInput,
   type SponsoredPostStatus,
 } from "@/lib/ads";
+import {
+  ALLOWED_SPONSORED_AD_IMAGE_TYPES,
+  MAX_SPONSORED_AD_IMAGE_SIZE_BYTES,
+  uploadSponsoredAdImage,
+} from "@/lib/adStorage";
 import type {
   CreateSponsoredPostInput,
   SponsoredPost,
@@ -155,14 +160,27 @@ export function AdminAdManagerPanel({
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [localImagePreviewUrl, setLocalImagePreviewUrl] = useState("");
   const [imagePreviewFailed, setImagePreviewFailed] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<
+    "idle" | "uploading" | "saving"
+  >("idle");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = editingAdId !== null;
   const imageUrl = form.image_url.trim();
+  const previewImageUrl = localImagePreviewUrl || imageUrl;
   const imageUrlError = getUrlInlineError(form.image_url, "image_url");
+  const displayedImageUrlError = selectedImageFile ? null : imageUrlError;
   const targetUrlError = getUrlInlineError(form.target_url, "target_url");
+  const imageSourceMessage = selectedImageFile
+    ? "將優先使用上傳圖片"
+    : imageUrl
+      ? "目前使用圖片 URL"
+      : "前台將使用預設圖";
 
   const filteredAds = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
@@ -228,7 +246,22 @@ export function AdminAdManagerPanel({
 
   useEffect(() => {
     setImagePreviewFailed(false);
-  }, [form.image_url]);
+  }, [form.image_url, localImagePreviewUrl]);
+
+  useEffect(() => {
+    if (!selectedImageFile) {
+      setLocalImagePreviewUrl("");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(selectedImageFile);
+    setLocalImagePreviewUrl(objectUrl);
+    setImagePreviewFailed(false);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [selectedImageFile]);
 
   function updateForm<K extends keyof AdFormState>(
     key: K,
@@ -244,7 +277,14 @@ export function AdminAdManagerPanel({
     setEditingAdId(null);
     setFormError(null);
     setSuccessMessage(null);
+    setSelectedImageFile(null);
+    setLocalImagePreviewUrl("");
     setImagePreviewFailed(false);
+    setSubmitStatus("idle");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   }
 
   function handleEdit(ad: SponsoredPost) {
@@ -252,30 +292,81 @@ export function AdminAdManagerPanel({
     setForm(toFormState(ad));
     setFormError(null);
     setSuccessMessage(null);
+    setSelectedImageFile(null);
+    setLocalImagePreviewUrl("");
+    setImagePreviewFailed(false);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  function handleAdImageFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+
+    if (!file) {
+      setSelectedImageFile(null);
+      return;
+    }
+
+    if (!ALLOWED_SPONSORED_AD_IMAGE_TYPES.includes(file.type)) {
+      setFormError("廣告圖片格式僅支援 JPG、PNG 或 WebP");
+      setSelectedImageFile(null);
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_SPONSORED_AD_IMAGE_SIZE_BYTES) {
+      setFormError("廣告圖片大小不可超過 5MB");
+      setSelectedImageFile(null);
+      event.target.value = "";
+      return;
+    }
+
+    setFormError(null);
+    setSuccessMessage(null);
+    setSelectedImageFile(file);
+    setImagePreviewFailed(false);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const input = toInput(form);
-    const validationError = validateSponsoredPostInput(input);
+    const validationInput = selectedImageFile
+      ? { ...input, image_url: "" }
+      : input;
+    const validationError = validateSponsoredPostInput(validationInput);
     if (validationError) {
       setFormError(validationError);
       return;
     }
 
     setIsSubmitting(true);
+    setSubmitStatus("saving");
     setFormError(null);
     setSuccessMessage(null);
 
     try {
+      let finalInput = input;
+
+      if (selectedImageFile) {
+        setSubmitStatus("uploading");
+        const uploadedImageUrl = await uploadSponsoredAdImage(selectedImageFile);
+        finalInput = {
+          ...input,
+          image_url: uploadedImageUrl,
+        };
+        setSubmitStatus("saving");
+      }
+
       if (editingAdId === null) {
-        const createdAd = await createSponsoredPost(input);
+        const createdAd = await createSponsoredPost(finalInput);
         setAds((currentAds) => [createdAd, ...currentAds]);
         resetForm();
         setSuccessMessage("廣告已新增。");
       } else {
-        const updatedAd = await updateSponsoredPost(editingAdId, input);
+        const updatedAd = await updateSponsoredPost(editingAdId, finalInput);
         setAds((currentAds) =>
           currentAds.map((ad) => (ad.id === updatedAd.id ? updatedAd : ad)),
         );
@@ -296,6 +387,7 @@ export function AdminAdManagerPanel({
           : "儲存廣告失敗，請稍後再試",
       );
     } finally {
+      setSubmitStatus("idle");
       setIsSubmitting(false);
     }
   }
@@ -376,7 +468,7 @@ export function AdminAdManagerPanel({
           <div>
             <h2 className="text-xl font-bold text-stone-950">廣告管理</h2>
             <p className="mt-1 text-sm text-stone-500">
-              管理 Sponsored Posts。圖片目前僅支援 image_url。
+              管理 Sponsored Posts。圖片可上傳到 Storage，也可手動輸入 image_url。
             </p>
           </div>
           <div className="flex gap-2">
@@ -490,6 +582,11 @@ export function AdminAdManagerPanel({
                   <legend className="text-sm font-semibold text-stone-950">
                     素材與連結
                   </legend>
+                  <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+                    Hero Banner 建議 1200 × 600，橫式圖片，2:1 或 16:9。Feed
+                    廣告卡建議 1200 × 900，4:3。避免重要文字貼近邊緣，前台會以
+                    cover 方式顯示，可能裁掉邊角。
+                  </div>
                   <label className="grid gap-1 text-sm font-medium text-stone-700">
                     image_url
                     <input
@@ -500,19 +597,40 @@ export function AdminAdManagerPanel({
                       className="rounded-md border border-stone-300 px-3 py-2 font-normal"
                       placeholder="https://..."
                     />
-                    {imageUrlError ? (
-                      <span className="text-xs text-red-700">{imageUrlError}</span>
+                    {displayedImageUrlError ? (
+                      <span className="text-xs text-red-700">
+                        {displayedImageUrlError}
+                      </span>
                     ) : null}
+                    <span className="text-xs font-normal text-stone-500">
+                      可手動貼上圖片 URL。若同時選擇本機圖片，送出時會優先使用上傳圖片。
+                    </span>
                   </label>
+                  <label className="grid gap-1 text-sm font-medium text-stone-700">
+                    上傳廣告圖片
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleAdImageFileChange}
+                      className="rounded-md border border-stone-300 px-3 py-2 text-sm font-normal file:mr-4 file:rounded-md file:border-0 file:bg-stone-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-stone-700 hover:file:bg-stone-200"
+                    />
+                    <span className="text-xs font-normal text-stone-500">
+                      支援 JPG、PNG、WebP，5MB 以內。
+                    </span>
+                  </label>
+                  <p className="rounded-md bg-white px-3 py-2 text-xs font-medium text-stone-600 ring-1 ring-stone-200">
+                    圖片來源：{imageSourceMessage}
+                  </p>
                   <div className="overflow-hidden rounded-md border border-stone-200 bg-white">
-                    {imageUrl ? (
+                    {previewImageUrl ? (
                       imagePreviewFailed ? (
                         <div className="px-3 py-6 text-center text-sm text-amber-700">
                           圖片無法預覽，前台會使用 fallback。
                         </div>
                       ) : (
                         <img
-                          src={imageUrl}
+                          src={previewImageUrl}
                           alt="廣告素材預覽"
                           className="h-40 w-full object-cover"
                           onError={() => setImagePreviewFailed(true)}
@@ -663,7 +781,13 @@ export function AdminAdManagerPanel({
                 disabled={isSubmitting}
                 className="mt-4 w-full rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400"
               >
-                {isSubmitting ? "儲存中..." : isEditing ? "更新廣告" : "新增廣告"}
+                {submitStatus === "uploading"
+                  ? "上傳圖片中..."
+                  : submitStatus === "saving"
+                    ? "儲存廣告中..."
+                    : isEditing
+                      ? "更新廣告"
+                      : "新增廣告"}
               </button>
             </form>
 
