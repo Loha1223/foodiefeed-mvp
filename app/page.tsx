@@ -9,6 +9,7 @@ import { MasonryGrid } from "@/components/feed/MasonryGrid";
 import { Navbar } from "@/components/global/Navbar";
 import { Toast } from "@/components/global/Toast";
 import { HeroBanner, HeroBannerSkeleton } from "@/components/hero/HeroBanner";
+import { HeroCarousel } from "@/components/hero/HeroCarousel";
 import { DetailModal } from "@/components/modals/DetailModal";
 import { PostModal } from "@/components/modals/PostModal";
 import { ToastProvider, useToast } from "@/hooks/useToast";
@@ -33,6 +34,7 @@ import type {
 } from "@/types/foodie";
 
 const HERO_BANNER_DISMISSED_STORAGE_KEY = "foodiefeed_hero_banner_dismissed";
+const MAX_HERO_SPONSORED_POSTS = 3;
 
 function createMockPosts(): Post[] {
   const now = Date.now();
@@ -173,8 +175,9 @@ function HomeContent() {
   const [myPosts, setMyPosts] = useState<Post[]>([]);
   const [adminPosts, setAdminPosts] = useState<Post[]>([]);
   const [sponsoredPosts, setSponsoredPosts] = useState<SponsoredPost[]>([]);
-  const [heroSponsoredPost, setHeroSponsoredPost] =
-    useState<SponsoredPost | null>(null);
+  const [heroSponsoredPosts, setHeroSponsoredPosts] = useState<SponsoredPost[]>(
+    [],
+  );
   const [isFeedLoading, setIsFeedLoading] = useState(true);
   const [isHeroSponsoredLoading, setIsHeroSponsoredLoading] = useState(true);
   const [isHeroDismissed, setIsHeroDismissed] = useState(false);
@@ -228,7 +231,7 @@ function HomeContent() {
   }, [feedPosts, feedFilter]);
 
   const heroPost = useMemo(() => {
-    if (heroSponsoredPost) {
+    if (heroSponsoredPosts.length > 0) {
       return null;
     }
 
@@ -256,7 +259,7 @@ function HomeContent() {
         );
       })[0] ?? null
     );
-  }, [feedPosts, feedFilter, heroSponsoredPost]);
+  }, [feedPosts, feedFilter, heroSponsoredPosts.length]);
 
   const shouldRenderHeroArea = hasResolvedHeroDismissal && !isHeroDismissed;
   const isHeroLoading =
@@ -319,14 +322,16 @@ function HomeContent() {
       ]);
 
       setSponsoredPosts(activeSponsoredPosts);
-      setHeroSponsoredPost(activeHeroSponsoredPosts[0] ?? null);
+      setHeroSponsoredPosts(
+        activeHeroSponsoredPosts.slice(0, MAX_HERO_SPONSORED_POSTS),
+      );
     } catch (error) {
       console.warn(
         error instanceof Error
           ? `Failed to load sponsored placements: ${error.message}`
           : "Failed to load sponsored placements",
       );
-      setHeroSponsoredPost(null);
+      setHeroSponsoredPosts([]);
     } finally {
       setIsHeroSponsoredLoading(false);
     }
@@ -779,14 +784,18 @@ function HomeContent() {
       ) : (
         <>
           {isHeroLoading ? <HeroBannerSkeleton /> : null}
-          {shouldRenderHeroArea && !isHeroLoading && heroSponsoredPost ? (
-            <HeroBanner
-              variant="sponsored"
-              ad={heroSponsoredPost}
+          {shouldRenderHeroArea &&
+          !isHeroLoading &&
+          heroSponsoredPosts.length > 0 ? (
+            <HeroCarousel
+              ads={heroSponsoredPosts}
               onDismiss={handleDismissHeroBanner}
             />
           ) : null}
-          {shouldRenderHeroArea && !isHeroLoading && !heroSponsoredPost && heroPost ? (
+          {shouldRenderHeroArea &&
+          !isHeroLoading &&
+          heroSponsoredPosts.length === 0 &&
+          heroPost ? (
             <HeroBanner
               variant="post"
               post={heroPost}

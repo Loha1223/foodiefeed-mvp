@@ -445,9 +445,9 @@ Admin 廣告管理支援兩種圖片來源：
 
 ### 首頁 Hero Banner MVP
 
-首頁 FilterBar 下方會顯示一則 Hero Banner。顯示優先序：
+首頁會顯示 Hero Banner。顯示優先序：
 
-1. 優先顯示 active `sponsored_posts` 中 `placement = 'hero'` 且 priority 最高的廣告。
+1. 優先顯示 active `sponsored_posts` 中 `placement = 'hero'` 的廣告，最多取 3 則。
 2. 若沒有可用 hero sponsored ad，fallback 到目前 active posts 中的熱門情報。
 3. 若沒有 hero ad 且沒有 active post，不顯示 Hero Banner，首頁仍正常顯示。
 
@@ -455,6 +455,11 @@ Sponsored Hero：
 
 - 清楚標示「贊助｜本週推薦」。
 - 使用 `brand_name`、`title`、`description`、`image_url`、`target_url`。
+- 多則 hero sponsored ads 會依 `priority desc`、`created_at desc` 排序，最多顯示 3 則。
+- 每 5 秒自動切換一則。
+- 使用者 hover 或 focus 在 Hero 區塊時會暫停自動輪播。
+- 使用者可用上一張 / 下一張按鈕與圓點 indicator 手動切換。
+- 每則 hero sponsored ad 在本次 mounted session 只記一次 impression。
 - 曝光會寫入 `ad_impressions`，`placement = 'hero'`。
 - 點擊 CTA 會寫入 `ad_clicks`，`placement = 'hero'`。
 - 可從 Admin 廣告管理新增，將 `placement` 設為 `hero`。
@@ -473,21 +478,24 @@ Post Hero：
 使用者行為：
 
 - 使用者可手動關閉 Hero Banner。
-- 關閉後會寫入 browser `sessionStorage`，本次 session 不再顯示 Sponsored Hero、Post Hero 或 Hero loading skeleton。
-- 新的 browser session 可再次顯示 Hero。
+- 關閉後會寫入 browser `sessionStorage`，本次 session 不再顯示 Sponsored Hero carousel、Post Hero 或 Hero loading skeleton。
+- 點擊「重新顯示」後，會清除 session dismiss 狀態並恢復 Hero；如果有多則 sponsored hero，輪播會從第一則開始。
+- 新的 browser session 也可再次顯示 Hero。
 
 限制：
 
-- 本階段不做自動輪播。
-- 同時間只顯示一則 Hero。
+- 本階段只輪播 sponsored hero，不輪播自然貼文。
+- 同時間只顯示一則 Hero 畫面。
 - 不做 A/B test。
+- 不做拖曳手勢。
+- 不做複雜動畫套件。
 - 不做進階熱門演算法權重。
 - 不做 post detail route。
 
 Hero 營運注意事項：
 
 - Admin 廣告管理中 `placement = hero` 代表首頁橫幅 Banner。
-- 同時有多則 active hero ads 時，依 `priority desc`、`created_at desc` 決定顯示哪一則。
+- 同時有多則 active hero ads 時，依 `priority desc`、`created_at desc` 排序輪播，最多顯示 3 則。
 - Hero 圖片建議使用橫幅比例，避免主視覺被裁切。
 - `target_url` 可空；空值時 Sponsored Hero 不顯示 CTA。
 - 若沒有可用 hero ad，系統會嘗試使用符合品質門檻的 Post Hero fallback。
@@ -498,10 +506,13 @@ Hero QA 建議：
 2. 確認 Sponsored Hero 標示「贊助｜本週推薦」。
 3. 捲動或重新整理後確認 `ad_impressions.placement = 'hero'`。
 4. 點擊 CTA 後確認 `ad_clicks.placement = 'hero'`。
-5. 停用 hero ad 後，確認 fallback 到符合門檻的 Post Hero。
-6. 確認 Post Hero 標示「熱門情報」，且不寫入廣告 tracking。
-7. 點擊 Post Hero 後確認開啟 DetailModal。
-8. 點擊關閉後，確認本次 session 不再顯示 Hero 或 Hero skeleton。
+5. 建立 2 至 3 筆 active `placement = hero` 的 sponsored posts，確認每 5 秒自動輪播。
+6. 確認 hover / focus Hero 區塊時自動輪播暫停。
+7. 確認上一張 / 下一張與圓點 indicator 可切換。
+8. 停用所有 hero ads 後，確認 fallback 到符合門檻的 Post Hero。
+9. 確認 Post Hero 標示「熱門情報」，且不寫入廣告 tracking。
+10. 點擊 Post Hero 後確認開啟 DetailModal。
+11. 點擊關閉後，確認本次 session 不再顯示 Hero 或 Hero skeleton；點擊重新顯示後 Hero 恢復。
 
 ### Sponsored Ads 曝光 / 點擊追蹤 MVP
 
