@@ -382,7 +382,7 @@ sponsored_posts
 - `image_url`：廣告圖片 URL，空值時使用 `/placeholder-food.jpg`。
 - `target_url`：活動連結，前端會以新分頁開啟。
 - `city` / `district` / `category`：可選的投放匹配條件，空值代表不限。
-- `placement`：目前使用 `feed`。
+- `placement`：目前支援 `feed`、`hero`、`detail`。
 - `starts_at` / `ends_at`：投放期間。
 - `is_active`：是否啟用。
 - `priority`：排序權重，數字越大越優先。
@@ -558,7 +558,7 @@ ad_clicks
 
 - public insert 仍保留，因為匿名訪客也要能記錄曝光 / 點擊。
 - `ad_id` 必須存在。
-- `placement` 限制為 `feed` / `hero` / `detail`，目前前端主要使用 `feed`。
+- `placement` 限制為 `feed` / `hero` / `detail`，目前前端使用 `feed` 與 `hero`；`detail` 版位為預留。
 - `page_path` 最長 300 字元。
 - `target_url` 最長 500 字元，且若有值必須以 `http://` 或 `https://` 開頭。
 - `session_id` 最長 120 字元。

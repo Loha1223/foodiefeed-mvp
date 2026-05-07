@@ -16,7 +16,9 @@
 ## 1. Supabase Migration 檢查
 
 - [ ] 已在 production Supabase 執行所有 migrations。
-- [ ] 最後一個已執行 migration 是 `20260429050000_create_sponsored_ad_images_bucket.sql`。
+- [ ] 最後一個已執行 migration 是 `20260429051000_create_sponsored_ad_stats_rpc.sql`。
+- [ ] 已執行 `20260429050000_create_sponsored_ad_images_bucket.sql`。
+- [ ] 已執行 `20260429051000_create_sponsored_ad_stats_rpc.sql`。
 - [ ] 沒有在 production 手動刪除或改寫 migration 內容。
 - [ ] `posts` table 存在。
 - [ ] `comments` table 存在。
@@ -50,7 +52,11 @@ Read-only check:
 select routine_name
 from information_schema.routines
 where routine_schema = 'public'
-  and routine_name in ('is_admin', 'increment_post_likes')
+  and routine_name in (
+    'is_admin',
+    'increment_post_likes',
+    'get_sponsored_ad_stats'
+  )
 order by routine_name;
 ```
 
