@@ -311,18 +311,18 @@ export function PostModal({
   return (
     <>
       <div
-        className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-stone-950/50 px-3 py-4 sm:items-center sm:px-4 sm:py-8"
+        className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-stone-950/50 px-3 py-4 transition-opacity duration-200 sm:items-center sm:px-4 sm:py-8"
         onClick={handleCloseModal}
       >
         <div
-          className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl sm:max-h-full"
+          className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-xl transition-transform duration-200 ease-out sm:max-h-full"
           onClick={(event) => event.stopPropagation()}
         >
           <div className="flex items-center justify-between border-b border-stone-200 px-5 py-4">
             <div>
-              <h2 className="text-xl font-bold text-stone-950">發佈美食情報</h2>
+              <h2 className="text-xl font-bold text-stone-950">發佈限時情報</h2>
               <p className="mt-1 text-sm text-stone-500">
-                新增後會寫入 Supabase；未設定環境變數時會顯示錯誤。
+                分享快閃、限定餐點或在地優惠，讓更多人一起發現美食。
               </p>
             </div>
             <button
@@ -338,7 +338,9 @@ export function PostModal({
           <section className="space-y-4">
             <div>
               <h3 className="text-sm font-semibold text-stone-900">基本情報</h3>
-              <p className="mt-1 text-xs text-stone-500">先填寫店家與情報標題。</p>
+              <p className="mt-1 text-xs text-stone-500">
+                先用一句話說清楚這則情報的亮點。
+              </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-medium text-stone-700">
@@ -349,7 +351,7 @@ export function PostModal({
                   value={form.name}
                   onChange={(event) => updateField("name", event.target.value)}
                   className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
-                  placeholder="例：阿春炸物"
+                  placeholder="例如：阿春炸物"
                 />
               </label>
 
@@ -361,7 +363,7 @@ export function PostModal({
                   value={form.title}
                   onChange={(event) => updateField("title", event.target.value)}
                   className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
-                  placeholder="例：今日限定雞排買一送一"
+                  placeholder="例如：今日限定雞排買一送一"
                 />
               </label>
             </div>
@@ -371,7 +373,7 @@ export function PostModal({
             <div>
               <h3 className="text-sm font-semibold text-stone-900">地點與分類</h3>
               <p className="mt-1 text-xs text-stone-500">
-                讓大家更快找到正確地點與類型。
+                幫大家快速判斷地點、類型與是否值得前往。
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
@@ -436,7 +438,7 @@ export function PostModal({
                 value={form.address}
                 onChange={(event) => updateField("address", event.target.value)}
                 className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 outline-none focus:border-red-500"
-                placeholder="例：台北市大安區..."
+                placeholder="例如：台北市大安區忠孝東路四段..."
               />
             </label>
           </section>
@@ -445,7 +447,7 @@ export function PostModal({
             <div>
               <h3 className="text-sm font-semibold text-stone-900">圖片來源</h3>
               <p className="mt-1 text-xs text-stone-500">
-                目前使用：{imageSourceLabel}
+                沒有圖片也可以發佈；上傳圖片會讓情報更容易被注意。 目前使用：{imageSourceLabel}
                 {selectedFile ? "（本機圖片優先）" : ""}
               </p>
             </div>
@@ -486,11 +488,10 @@ export function PostModal({
                 className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-stone-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-stone-700 hover:file:bg-stone-200"
               />
               <span className="mt-1 block text-xs font-normal text-stone-500">
-                限時情報圖片建議 1200 × 900，4:3。支援 JPG、PNG、WebP，最大
-                5MB。若選擇本機圖片，會優先使用上傳圖片。
+                建議使用 4:3 美食照片，重要內容請盡量放在畫面中央。支援 JPG、PNG、WebP，最大 5MB。
               </span>
               <span className="mt-1 block text-xs font-normal text-stone-500">
-                前台卡片會以 cover 方式顯示，邊緣可能被裁；可先使用裁切工具調整主視覺。
+                若同時填入圖片 URL 與上傳本機圖片，會優先使用本機圖片；可先用裁切工具調整主視覺。
               </span>
             </label>
           </section>
@@ -514,7 +515,7 @@ export function PostModal({
               />
               {isPreviewLoadFailed && !selectedFile ? (
                 <p className="text-xs text-amber-700">
-                  目前無法載入此 URL 預覽，仍可送出，卡片會自動 fallback 顯示預設圖片。
+                  目前無法載入此 URL 預覽，仍可送出，系統會自動改用預設圖片。
                 </p>
               ) : null}
             </div>
@@ -537,7 +538,7 @@ export function PostModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-stone-400"
+              className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-md disabled:cursor-not-allowed disabled:bg-stone-400 disabled:shadow-none disabled:hover:translate-y-0"
             >
               {isUploadingImage
                 ? "圖片上傳中..."
@@ -545,7 +546,7 @@ export function PostModal({
                   ? "發佈中..."
                   : isSubmitting
                     ? "送出中..."
-                    : "送出"}
+                    : "發佈情報"}
             </button>
           </div>
           </form>
@@ -556,7 +557,7 @@ export function PostModal({
         isOpen={isCropperOpen}
         aspectRatio={4 / 3}
         title="裁切限時情報圖片"
-        helperText="建議 1200 × 900，4:3；前台卡片會以 cover 顯示"
+        helperText="限時情報建議 4:3，重要內容盡量置中"
         onCancel={closeCropperWithoutChanges}
         onUseOriginal={useOriginalImage}
         onCropComplete={useCroppedImage}

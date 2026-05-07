@@ -138,7 +138,7 @@ export function HeroBanner(props: HeroBannerProps) {
             handlePostClick();
           }
         }}
-        className={`relative grid max-h-none overflow-hidden rounded-lg border shadow-sm md:h-[240px] md:max-h-[260px] md:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] ${
+        className={`relative grid max-h-none overflow-hidden rounded-lg border shadow-sm transition duration-200 md:h-[240px] md:max-h-[260px] md:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] ${
           props.variant === "sponsored"
             ? "border-amber-200 bg-amber-50"
             : "border-stone-200 bg-white"
@@ -148,7 +148,7 @@ export function HeroBanner(props: HeroBannerProps) {
           <button
             type="button"
             onClick={handleDismissClick}
-            className="absolute right-3 top-3 z-20 rounded-full bg-white/95 px-2.5 py-1.5 text-xs font-semibold text-stone-600 shadow-sm transition hover:bg-white hover:text-stone-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2"
+            className="absolute right-3 top-3 z-20 rounded-full bg-white/95 px-2.5 py-1.5 text-xs font-semibold text-stone-600 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-white hover:text-stone-950 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2"
             aria-label="關閉 Hero Banner，本次瀏覽階段不再顯示"
           >
             關閉
@@ -196,7 +196,7 @@ export function HeroBanner(props: HeroBannerProps) {
                     target="_blank"
                     rel="noreferrer"
                     onClick={handleSponsoredCtaClick}
-                    className="inline-flex rounded-md bg-stone-950 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-stone-800"
+                    className="inline-flex rounded-md bg-stone-950 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-stone-800 hover:shadow-md"
                   >
                     查看活動
                   </a>
@@ -246,7 +246,7 @@ export function HeroBanner(props: HeroBannerProps) {
                     event.stopPropagation();
                     handlePostClick();
                   }}
-                  className="inline-flex rounded-md bg-red-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                  className="inline-flex rounded-md bg-red-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-md"
                 >
                   查看限時情報
                 </button>

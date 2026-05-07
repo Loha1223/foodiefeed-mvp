@@ -151,14 +151,14 @@ export function HeroCarousel({ ads, onDismiss }: HeroCarouselProps) {
         onMouseLeave={() => setIsPaused(false)}
         onFocusCapture={() => setIsPaused(true)}
         onBlurCapture={handleFocusBlur}
-        className="relative grid max-h-none overflow-hidden rounded-lg border border-amber-200 bg-amber-50 shadow-sm md:h-[240px] md:max-h-[260px] md:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]"
+        className="relative grid max-h-none overflow-hidden rounded-lg border border-amber-200 bg-amber-50 shadow-sm transition duration-200 md:h-[240px] md:max-h-[260px] md:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]"
         aria-roledescription="carousel"
         aria-label="贊助 Hero 推薦"
       >
         <button
           type="button"
           onClick={handleDismissClick}
-          className="absolute right-3 top-3 z-20 rounded-full bg-white/95 px-2.5 py-1.5 text-xs font-semibold text-stone-600 shadow-sm transition hover:bg-white hover:text-stone-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2"
+          className="absolute right-3 top-3 z-20 rounded-full bg-white/95 px-2.5 py-1.5 text-xs font-semibold text-stone-600 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-white hover:text-stone-950 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2"
           aria-label="關閉 Hero Banner，本次瀏覽階段不再顯示"
         >
           關閉
@@ -168,7 +168,7 @@ export function HeroCarousel({ ads, onDismiss }: HeroCarouselProps) {
           <img
             src={displayImageUrl}
             alt={activeAd.title}
-            className="absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-300"
+            className="absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-500"
             onError={() => setHasImageError(true)}
           />
           <span className="absolute left-4 top-4 rounded-full bg-amber-600 px-3 py-1 text-xs font-semibold text-white shadow-sm">
@@ -180,7 +180,7 @@ export function HeroCarousel({ ads, onDismiss }: HeroCarouselProps) {
               <button
                 type="button"
                 onClick={handlePreviousClick}
-                className="rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-950"
+                className="rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-950"
                 aria-label="上一張 Hero 廣告"
               >
                 上一張
@@ -188,7 +188,7 @@ export function HeroCarousel({ ads, onDismiss }: HeroCarouselProps) {
               <button
                 type="button"
                 onClick={handleNextClick}
-                className="rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-950"
+                className="rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-950"
                 aria-label="下一張 Hero 廣告"
               >
                 下一張
@@ -219,7 +219,7 @@ export function HeroCarousel({ ads, onDismiss }: HeroCarouselProps) {
                 target="_blank"
                 rel="noreferrer"
                 onClick={handleCtaClick}
-                className="inline-flex rounded-md bg-stone-950 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-stone-800"
+                className="inline-flex rounded-md bg-stone-950 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-stone-800 hover:shadow-md"
               >
                 查看活動
               </a>

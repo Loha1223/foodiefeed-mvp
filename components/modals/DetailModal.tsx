@@ -55,7 +55,7 @@ export function DetailModal({
         }
       } catch {
         if (!isCancelled) {
-          setLoadError("目前無法載入留言，可能尚未設定 Supabase。");
+          setLoadError("目前無法載入留言，請稍後再試。");
         }
       } finally {
         if (!isCancelled) {
@@ -199,11 +199,11 @@ export function DetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-stone-950/50 px-3 py-4 sm:items-center sm:px-4 sm:py-8"
+      className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-stone-950/50 px-3 py-4 transition-opacity duration-200 sm:items-center sm:px-4 sm:py-8"
       onClick={onClose}
     >
       <div
-        className="max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-lg bg-white shadow-xl sm:max-h-full"
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-lg bg-white shadow-xl transition-transform duration-200 ease-out sm:max-h-full"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="relative">
@@ -218,7 +218,7 @@ export function DetailModal({
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-4 top-4 rounded-md bg-white/95 px-3 py-2 text-sm font-medium text-stone-700 shadow hover:bg-white"
+            className="absolute right-4 top-4 rounded-md bg-white/95 px-3 py-2 text-sm font-medium text-stone-700 shadow transition duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-md"
           >
             關閉
           </button>
@@ -251,14 +251,14 @@ export function DetailModal({
                 <button
                   type="button"
                   onClick={handleCopyAddress}
-                  className="rounded-md border border-stone-300 bg-white px-3 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100"
+                  className="rounded-md border border-stone-300 bg-white px-3 py-2 text-xs font-medium text-stone-700 transition hover:-translate-y-0.5 hover:bg-stone-100"
                 >
                   複製地址
                 </button>
                 <button
                   type="button"
                   onClick={handleCopyPostSummary}
-                  className="rounded-md border border-stone-300 bg-white px-3 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100"
+                  className="rounded-md border border-stone-300 bg-white px-3 py-2 text-xs font-medium text-stone-700 transition hover:-translate-y-0.5 hover:bg-stone-100"
                 >
                   複製情報
                 </button>
@@ -366,7 +366,7 @@ export function DetailModal({
                 <button
                   type="submit"
                   disabled={isSubmittingComment}
-                  className="w-full rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-stone-400 sm:w-auto"
+                  className="w-full rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-md disabled:cursor-not-allowed disabled:bg-stone-400 disabled:shadow-none disabled:hover:translate-y-0 sm:w-auto"
                 >
                   {isSubmittingComment ? "送出中..." : "送出留言"}
                 </button>

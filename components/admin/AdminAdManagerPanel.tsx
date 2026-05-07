@@ -205,9 +205,9 @@ export function AdminAdManagerPanel({
   const isEditing = editingAdId !== null;
   const imageUrl = form.image_url.trim();
   const previewImageUrl = localImagePreviewUrl || imageUrl;
-  const imageUrlError = getUrlInlineError(form.image_url, "image_url");
+  const imageUrlError = getUrlInlineError(form.image_url, "圖片連結");
   const displayedImageUrlError = selectedImageFile ? null : imageUrlError;
-  const targetUrlError = getUrlInlineError(form.target_url, "target_url");
+  const targetUrlError = getUrlInlineError(form.target_url, "活動連結");
   const adImageCropConfig = getAdImageCropConfig(form.placement);
   const imageSourceMessage = selectedImageFile
     ? "將優先使用上傳圖片"
@@ -538,7 +538,7 @@ export function AdminAdManagerPanel({
           <div>
             <h2 className="text-xl font-bold text-stone-950">廣告管理</h2>
             <p className="mt-1 text-sm text-stone-500">
-              管理 Sponsored Posts。圖片可上傳到 Storage，也可手動輸入 image_url。
+              管理品牌活動素材與投放內容。可貼上圖片連結，或直接上傳圖片檔。
             </p>
           </div>
           <div className="flex gap-2">
@@ -547,7 +547,7 @@ export function AdminAdManagerPanel({
                 type="button"
                 onClick={() => void loadAds()}
                 disabled={isLoading}
-                className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:text-stone-400"
+                className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 transition duration-200 hover:-translate-y-0.5 hover:bg-stone-50 disabled:cursor-not-allowed disabled:text-stone-400 disabled:hover:translate-y-0"
               >
                 重新整理
               </button>
@@ -556,7 +556,7 @@ export function AdminAdManagerPanel({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
+                className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-700 transition duration-200 hover:-translate-y-0.5 hover:bg-stone-50"
               >
                 關閉
               </button>
@@ -653,12 +653,11 @@ export function AdminAdManagerPanel({
                     素材與連結
                   </legend>
                   <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
-                    Hero Banner 建議 1200 × 600，橫式圖片，2:1 或 16:9。Feed
-                    廣告卡建議 1200 × 900，4:3。避免重要文字貼近邊緣，前台會以
-                    cover 方式顯示，可能裁掉邊角。
+                    Hero Banner 建議 1200 × 600（2:1）；Feed 廣告卡建議 1200 ×
+                    900（4:3）。重要內容盡量置中，避免被邊緣裁切。
                   </div>
                   <label className="grid gap-1 text-sm font-medium text-stone-700">
-                    image_url
+                    圖片連結
                     <input
                       value={form.image_url}
                       onChange={(event) =>
@@ -673,7 +672,7 @@ export function AdminAdManagerPanel({
                       </span>
                     ) : null}
                     <span className="text-xs font-normal text-stone-500">
-                      可手動貼上圖片 URL。若同時選擇本機圖片，送出時會優先使用上傳圖片。
+                      可直接貼上圖片連結；若同時上傳本機圖片，會優先使用上傳檔案。
                     </span>
                   </label>
                   <label className="grid gap-1 text-sm font-medium text-stone-700">
@@ -686,7 +685,7 @@ export function AdminAdManagerPanel({
                       className="rounded-md border border-stone-300 px-3 py-2 text-sm font-normal file:mr-4 file:rounded-md file:border-0 file:bg-stone-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-stone-700 hover:file:bg-stone-200"
                     />
                     <span className="text-xs font-normal text-stone-500">
-                      支援 JPG、PNG、WebP，5MB 以內。
+                      支援 JPG、PNG、WebP，5MB 以內。可先裁切後再套用。
                     </span>
                   </label>
                   <p className="rounded-md bg-white px-3 py-2 text-xs font-medium text-stone-600 ring-1 ring-stone-200">
@@ -697,7 +696,7 @@ export function AdminAdManagerPanel({
                     {previewImageUrl ? (
                       imagePreviewFailed ? (
                         <div className="px-3 py-6 text-center text-sm text-amber-700">
-                          圖片無法預覽，前台會使用 fallback。
+                          圖片暫時無法預覽，前台會改用預設圖片。
                         </div>
                       ) : (
                         <img
@@ -709,12 +708,12 @@ export function AdminAdManagerPanel({
                       )
                     ) : (
                       <div className="px-3 py-6 text-center text-sm text-stone-500">
-                        未提供圖片，前台會使用預設圖。
+                        尚未提供圖片，前台會使用預設圖片。
                       </div>
                     )}
                   </div>
                   <label className="grid gap-1 text-sm font-medium text-stone-700">
-                    target_url
+                    活動連結
                     <input
                       value={form.target_url}
                       onChange={(event) =>
@@ -782,9 +781,8 @@ export function AdminAdManagerPanel({
                         <option value="detail">detail</option>
                       </select>
                       <span className="text-xs leading-5 text-stone-500">
-                        feed：Feed 原生廣告卡，每 6 張情報後插入。hero：首頁 Hero
-                        Banner，最多顯示前 3 則 active hero 廣告並輪播，依
-                        priority 由高到低排序。detail：詳情頁預留，目前前台尚未顯示。
+                        Feed：資訊牆中的原生廣告卡。Hero：首頁 Hero Banner（最多輪播 3 則）。
+                        Detail：詳情頁預留版位，目前前台尚未顯示。
                       </span>
                     </label>
                   </div>
@@ -795,7 +793,7 @@ export function AdminAdManagerPanel({
                     投放設定
                   </legend>
                   <p className="text-xs leading-5 text-stone-500">
-                    時間以目前瀏覽器時區輸入，儲存後由 Supabase 轉為時間戳。
+                    依目前瀏覽器時區輸入時間，送出後系統會自動換算。
                   </p>
                   <label className="grid gap-1 text-sm font-medium text-stone-700">
                     開始時間
@@ -822,7 +820,7 @@ export function AdminAdManagerPanel({
                   </label>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="grid gap-1 text-sm font-medium text-stone-700">
-                      Priority
+                      顯示優先順序
                       <input
                         type="number"
                         value={form.priority}
@@ -850,7 +848,7 @@ export function AdminAdManagerPanel({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="mt-4 w-full rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400"
+                className="mt-4 w-full rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-stone-800 hover:shadow-md disabled:cursor-not-allowed disabled:bg-stone-400 disabled:shadow-none disabled:hover:translate-y-0"
               >
                 {submitStatus === "uploading"
                   ? "上傳圖片中..."
@@ -865,14 +863,14 @@ export function AdminAdManagerPanel({
             <div className="rounded-lg border border-stone-200 bg-white">
               <div className="grid gap-3 border-b border-stone-100 bg-stone-50 px-4 py-3">
                 <p className="text-sm font-medium text-stone-700">
-                  共 {filteredAds.length} / {ads.length} 筆 sponsored_posts
+                  共 {filteredAds.length} / {ads.length} 筆活動
                 </p>
                 <div className="grid gap-2 sm:grid-cols-[1fr_160px]">
                   <input
                     value={searchTerm}
                     onChange={(event) => setSearchTerm(event.target.value)}
                     className="rounded-md border border-stone-300 px-3 py-2 text-sm"
-                    placeholder="搜尋 brand / title / city / district / category"
+                    placeholder="搜尋品牌、標題、地區或類別"
                   />
                   <select
                     value={statusFilter}
@@ -941,15 +939,15 @@ export function AdminAdManagerPanel({
 
                         <div className="grid gap-1 text-xs text-stone-500 sm:grid-cols-2">
                           <span>版位: {ad.placement || "feed"}</span>
-                          <span>Priority: {ad.priority}</span>
+                          <span>優先順序: {ad.priority}</span>
                           <span>
                             條件: {[ad.city, ad.district, ad.category]
                               .filter(Boolean)
                               .join(" / ") || "不限"}
                           </span>
-                          <span>素材: {ad.image_url ? "有 image_url" : "預設圖"}</span>
+                          <span>素材: {ad.image_url ? "已設定圖片" : "預設圖片"}</span>
                           <span>
-                            連結: {ad.target_url ? "有 target_url" : "無 CTA"}
+                            連結: {ad.target_url ? "有活動連結" : "無活動連結"}
                           </span>
                           <span>開始: {formatDateTime(ad.starts_at)}</span>
                           <span>結束: {formatDateTime(ad.ends_at)}</span>

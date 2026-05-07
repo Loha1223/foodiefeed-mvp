@@ -759,7 +759,7 @@ function HomeContent() {
             <button
               type="button"
               onClick={handleOpenPostModal}
-              className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700"
+              className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-md"
             >
               發佈限時情報
             </button>
@@ -775,7 +775,7 @@ function HomeContent() {
             <button
               type="button"
               onClick={handleRestoreHeroBanner}
-              className="shrink-0 rounded border border-stone-300 bg-white px-2 py-1 text-[11px] font-medium text-stone-700 transition hover:bg-stone-50 sm:px-2.5 sm:text-xs"
+              className="shrink-0 rounded border border-stone-300 bg-white px-2 py-1 text-[11px] font-medium text-stone-700 transition duration-200 hover:-translate-y-0.5 hover:bg-stone-50 sm:px-2.5 sm:text-xs"
             >
               重新顯示
             </button>

@@ -113,7 +113,7 @@ export function FilterBar({
           <button
             type="button"
             onClick={() => setIsExpanded((expanded) => !expanded)}
-            className="shrink-0 rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50 sm:px-3 sm:py-2 sm:text-sm"
+            className="shrink-0 rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 transition duration-200 hover:-translate-y-0.5 hover:bg-stone-50 sm:px-3 sm:py-2 sm:text-sm"
           >
             {isExpanded ? "收合" : "進階"}
           </button>
@@ -132,7 +132,13 @@ export function FilterBar({
           )}
         </div>
 
-        {isExpanded ? (
+        <div
+          className={`grid overflow-hidden transition-all duration-200 ${
+            isExpanded
+              ? "mt-1 max-h-[28rem] opacity-100"
+              : "pointer-events-none max-h-0 opacity-0"
+          }`}
+        >
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <label className="block text-sm text-stone-600">
             類別
@@ -213,7 +219,7 @@ export function FilterBar({
             </button>
           </div>
           </div>
-        ) : null}
+        </div>
       </div>
     </section>
   );

@@ -49,14 +49,14 @@ export function PostCard({ post, onClick, onLike }: PostCardProps) {
           onClick(post);
         }
       }}
-      className={`overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm transition duration-200 ${
+      className={`group overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm transition duration-200 ${
         expired
           ? "border-stone-300 bg-stone-50 opacity-70"
-          : "cursor-pointer hover:-translate-y-1 hover:shadow-md"
+          : "cursor-pointer hover:-translate-y-0.5 hover:shadow-lg"
       }`}
       aria-disabled={expired}
     >
-      <div className="group relative overflow-hidden bg-stone-100">
+      <div className="relative overflow-hidden bg-stone-100">
         {!isImageLoaded ? (
           <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-stone-100 to-stone-200" />
         ) : null}
@@ -111,7 +111,7 @@ export function PostCard({ post, onClick, onLike }: PostCardProps) {
             type="button"
             onClick={handleLikeClick}
             disabled={expired}
-            className="rounded-md px-2 py-1 font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-stone-400 disabled:hover:bg-transparent"
+            className="rounded-md px-2 py-1 font-semibold text-red-600 transition duration-200 hover:-translate-y-0.5 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-stone-400 disabled:hover:translate-y-0 disabled:hover:bg-transparent"
             aria-label={`${post.title} 按讚`}
           >
             ♥ <span className="tabular-nums">{post.likes}</span>

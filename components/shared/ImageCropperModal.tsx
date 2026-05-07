@@ -41,6 +41,18 @@ function getAspectRatioLabel(aspectRatio: number) {
   return `${aspectRatio.toFixed(2)}:1`;
 }
 
+function getAspectRatioHint(aspectRatioLabel: string) {
+  if (aspectRatioLabel === "4:3") {
+    return "限時情報、Feed 廣告建議使用 4:3";
+  }
+
+  if (aspectRatioLabel === "2:1") {
+    return "Hero Banner 建議使用 2:1";
+  }
+
+  return `建議比例：${aspectRatioLabel}`;
+}
+
 function getObjectPosition(position: CropPosition) {
   if (position === "top") {
     return "center top";
@@ -221,11 +233,11 @@ export function ImageCropperModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-stone-950/60 px-3 py-4 sm:items-center sm:px-4 sm:py-8"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-stone-950/60 px-3 py-4 transition-opacity duration-200 sm:items-center sm:px-4 sm:py-8"
       onClick={onCancel}
     >
       <div
-        className="w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl"
+        className="w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl transition-transform duration-200 ease-out"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="border-b border-stone-200 px-5 py-4">
@@ -233,7 +245,7 @@ export function ImageCropperModal({
             <div>
               <h2 className="text-lg font-bold text-stone-950">{title}</h2>
               <p className="mt-1 text-xs text-stone-500">
-                建議比例：{aspectRatioLabel}
+                {getAspectRatioHint(aspectRatioLabel)}
                 {helperText ? `。${helperText}` : ""}
               </p>
             </div>
@@ -267,7 +279,7 @@ export function ImageCropperModal({
               <div className="pointer-events-none absolute inset-3 rounded-md border border-white/80 shadow-[0_0_0_999px_rgba(28,25,23,0.16)]" />
             </div>
             <p className="text-xs text-stone-500">
-              這是裁切預覽。MVP 先提供對齊位置與縮放，不支援自由拖曳、旋轉或壓縮。
+              先調整主體位置與縮放，確認後套用裁切。
             </p>
           </div>
 
@@ -319,14 +331,14 @@ export function ImageCropperModal({
               <button
                 type="button"
                 onClick={onCancel}
-                className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
+                className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
               >
                 取消
               </button>
               <button
                 type="button"
                 onClick={() => onUseOriginal(file)}
-                className="rounded-md border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-50"
+                className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
               >
                 使用原圖
               </button>
@@ -334,9 +346,9 @@ export function ImageCropperModal({
                 type="button"
                 onClick={() => void handleCrop()}
                 disabled={isCropping}
-                className="rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400"
+                className="rounded-md bg-stone-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-stone-800 hover:shadow-md disabled:cursor-not-allowed disabled:bg-stone-400 disabled:shadow-none disabled:hover:translate-y-0"
               >
-                {isCropping ? "裁切中..." : "套用裁切"}
+                {isCropping ? "套用中..." : "確認並套用裁切"}
               </button>
             </div>
           </div>
