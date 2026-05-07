@@ -530,6 +530,65 @@ limit 20;
 - 測試 ad id：
 - 備註：
 
+### Case 11.2 Hero Carousel 顯示矩陣（0 / 1 / 2-3 / >3）
+
+前置條件：
+
+- 已有 admin 帳號可調整 `placement = hero` 的廣告資料。
+- 可準備至少 4 筆 active hero 廣告（用於 >3 驗證）。
+
+操作步驟：
+
+1. 設定 0 筆 active hero ad，重新整理首頁。
+2. 設定 1 筆 active hero ad，重新整理首頁。
+3. 設定 2~3 筆 active hero ad，重新整理首頁並觀察輪播。
+4. 設定超過 3 筆 active hero ad，重新整理首頁並觀察實際可見張數。
+5. 調整不同 priority 與 created_at，確認顯示順序。
+
+預期結果：
+
+- 0 筆：fallback 到 Post Hero（若有符合條件貼文），否則不顯示 Hero。
+- 1 筆：顯示單張 Hero，無頁數切換需求。
+- 2~3 筆：可輪播，且上一張/下一張/indicator 正常。
+- >3 筆：只取排序後前 3 筆。
+- 排序規則符合 `priority desc, created_at desc`。
+
+記錄：
+
+- 結果：通過 / 失敗
+- 各情境 ad id：
+- 備註：
+
+### Case 11.3 Hero Carousel 互動（hover/focus pause、dismiss/restore、active CTA）
+
+前置條件：
+
+- 至少 2 筆 active hero ad。
+
+操作步驟：
+
+1. 開啟首頁觀察 Hero 每 5 秒自動切換。
+2. 將滑鼠 hover 在 Hero 區塊，觀察是否暫停。
+3. 用鍵盤 focus 進入 Hero 互動元素，觀察是否暫停。
+4. 點上一張/下一張與 indicator，確認切換。
+5. 點擊關閉（dismiss）後，確認 Hero 收合列出現。
+6. 點擊「重新顯示」，確認 Hero 回復與輪播恢復。
+7. 在不同 active ad 上點 CTA，確認跳轉目標正確。
+
+預期結果：
+
+- hover/focus 可暫停自動輪播。
+- 手動切換控制正常。
+- dismiss 後本次 session 不再顯示 Hero。
+- restore 後 Hero 重新顯示並恢復輪播。
+- CTA 永遠對應目前 active ad 的 `target_url`。
+
+記錄：
+
+- 結果：通過 / 失敗
+- 異常步驟：
+- 備註：
+
 ## 12. 廣告曝光 / 點擊 Tracking 測試
 
 ### Case 12.1 Impression / Click 寫入
@@ -572,6 +631,53 @@ select ad_id, placement, page_path, target_url, user_id, session_id, created_at
 from public.ad_clicks
 order by created_at desc
 limit 20;
+```
+
+記錄：
+
+- 結果：通過 / 失敗
+- ad id：
+- 備註：
+
+### Case 12.2 Hero placement Tracking
+
+前置條件：
+
+- 至少 2 筆 active hero ad。
+
+操作步驟：
+
+1. 開啟首頁，等 Hero 進入可視範圍。
+2. 等待輪播切換到下一張，確認每張都曾可視。
+3. 點擊目前 active Hero 的 CTA。
+4. 到 Supabase 查詢 `ad_impressions` / `ad_clicks`。
+
+預期結果：
+
+- Hero impression 寫入 `ad_impressions`。
+- Hero click 寫入 `ad_clicks`。
+- `placement = 'hero'`。
+- click 的 `target_url` 對應當下 active ad。
+- tracking 失敗不阻擋 UI。
+
+Read-only check:
+
+```sql
+select ad_id, placement, page_path, session_id, created_at
+from public.ad_impressions
+where placement = 'hero'
+order by created_at desc
+limit 30;
+```
+
+Read-only check:
+
+```sql
+select ad_id, placement, target_url, page_path, session_id, created_at
+from public.ad_clicks
+where placement = 'hero'
+order by created_at desc
+limit 30;
 ```
 
 記錄：
@@ -649,6 +755,71 @@ order by created_at desc;
 
 - 結果：通過 / 失敗
 - 測試 ad id：
+- 備註：
+
+### Case 14.2 Admin 廣告圖片上傳與裁切
+
+前置條件：
+
+- 已登入 admin。
+- 準備 JPG / PNG / WebP 測試圖。
+
+操作步驟：
+
+1. 在廣告管理選擇 `placement = hero`，上傳本機圖片並裁切 2:1。
+2. 送出後確認 `image_url` 指向 `sponsored-ad-images` public URL。
+3. 將 `placement` 改為 `feed`，上傳本機圖片並裁切 4:3。
+4. 測試「使用原圖」。
+5. 測試「取消裁切」不應改動既有選圖。
+6. 使用一般 user 帳號嘗試上傳廣告圖片。
+
+預期結果：
+
+- Hero 廣告可套用 2:1 裁切，Feed 可套用 4:3 裁切。
+- 使用原圖與取消裁切行為正確。
+- `image_url` 為 `sponsored-ad-images` 的 public URL。
+- 一般 user 無法上傳廣告圖片（被權限拒絕）。
+
+Read-only check:
+
+```sql
+select id, title, placement, image_url, created_at
+from public.sponsored_posts
+order by created_at desc
+limit 20;
+```
+
+記錄：
+
+- 結果：通過 / 失敗
+- 測試 ad id：
+- 備註：
+
+### Case 14.3 共用圖片裁切工具（Post / Admin）
+
+前置條件：
+
+- 一般 user 與 admin 帳號皆可登入。
+
+操作步驟：
+
+1. 一般 user 在 PostModal 上傳圖片，確認預設 4:3 裁切。
+2. admin 在廣告管理 `placement = hero` 上傳圖片，確認 2:1。
+3. admin 在廣告管理 `placement = feed` 上傳圖片，確認 4:3。
+4. 各情境測試 zoom slider 與位置選擇。
+5. 測試「使用原圖」與「取消裁切」。
+
+預期結果：
+
+- PostModal 固定 4:3。
+- Admin hero 為 2:1。
+- Admin feed 為 4:3。
+- 使用原圖 / 取消裁切行為一致且不 crash。
+
+記錄：
+
+- 結果：通過 / 失敗
+- 裝置 / browser：
 - 備註：
 
 ## 15. 手機版測試

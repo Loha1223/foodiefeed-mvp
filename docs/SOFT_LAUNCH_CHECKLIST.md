@@ -16,7 +16,7 @@
 ## 1. Supabase Migration 檢查
 
 - [ ] 已在 production Supabase 執行所有 migrations。
-- [ ] 最後一個已執行 migration 是 `20260429049000_harden_post_likes.sql`。
+- [ ] 最後一個已執行 migration 是 `20260429050000_create_sponsored_ad_images_bucket.sql`。
 - [ ] 沒有在 production 手動刪除或改寫 migration 內容。
 - [ ] `posts` table 存在。
 - [ ] `comments` table 存在。
@@ -109,13 +109,19 @@ order by tablename, policyname;
 - [ ] 登入使用者只能 delete 自己路徑下的圖片。
 - [ ] 刪除 post 後，若圖片是 FoodieFeed Storage URL，會嘗試 cleanup。
 - [ ] 外部圖片 URL 與 `/placeholder-food.jpg` 不會被 Storage cleanup 誤刪。
+- [ ] Storage bucket `sponsored-ad-images` 存在。
+- [ ] `sponsored-ad-images` 為 public read。
+- [ ] Admin 可 upload 到 `ads/{auth.uid()}/...`。
+- [ ] Admin 可 delete `sponsored-ad-images` 物件。
+- [ ] 一般使用者不可 upload/delete `sponsored-ad-images`。
 
 Read-only check:
 
 ```sql
 select id, name, public
 from storage.buckets
-where id = 'foodie-post-images';
+where id in ('foodie-post-images', 'sponsored-ad-images')
+order by id;
 ```
 
 Read-only check:
@@ -127,6 +133,19 @@ where schemaname = 'storage'
   and tablename = 'objects'
 order by policyname;
 ```
+
+## 3.1 Hero Carousel / Dismiss / Restore / Tracking 檢查
+
+- [ ] 0 則 hero ad：會 fallback 到 Post Hero（若有符合條件貼文），否則不顯示 Hero。
+- [ ] 1 則 hero ad：顯示單張 sponsored Hero，不顯示切換控制。
+- [ ] 2-3 則 hero ad：可輪播、可上一張/下一張、可用 indicator 切換。
+- [ ] 超過 3 則 hero ad：只取排序後前 3 則。
+- [ ] hero ad 排序符合 `priority desc, created_at desc`。
+- [ ] Hero dismiss 後本次 session 不再顯示 Hero。
+- [ ] Hero restore 後可重新顯示 Hero 並恢復輪播。
+- [ ] Hero impression 寫入 `ad_impressions` 且 `placement = 'hero'`。
+- [ ] Hero CTA click 寫入 `ad_clicks` 且 `placement = 'hero'`。
+- [ ] tracking 寫入失敗不阻擋 Hero 顯示與 CTA 跳轉。
 
 ## 4. Auth Redirect URL 檢查
 

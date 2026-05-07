@@ -56,6 +56,12 @@ CI 目前不測真實 Supabase CRUD、Auth、Storage、RLS 或 E2E flow；這些
 - [Manual QA Runbook](docs/MANUAL_QA_RUNBOOK.md)
 - [Rollback Plan](docs/ROLLBACK_PLAN.md)
 
+上述 checklist / runbook 已納入：
+
+- `20260429050000_create_sponsored_ad_images_bucket.sql` 檢核
+- `sponsored-ad-images` bucket / policy 權限檢核
+- Hero carousel（0/1/2-3/>3）、dismiss / restore、`placement = 'hero'` tracking 檢核
+
 ## Supabase 設定與測試
 
 ### .env.local
@@ -439,7 +445,7 @@ Admin 廣告管理支援兩種圖片來源：
 
 - 不做圖片壓縮。
 - 不做旋轉或高階圖片編輯。
-- 不做 Hero 輪播。
+- Hero 輪播目前僅支援 sponsored hero（最多 3 則），不支援自然貼文輪播。
 - 手機版裁切工具為基本可用。
 - 廣告圖片上傳不會自動刪除舊圖；若需要清理舊素材，請由 admin 在 Supabase Storage 中確認後處理。
 

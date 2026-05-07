@@ -782,9 +782,9 @@ export function AdminAdManagerPanel({
                         <option value="detail">detail</option>
                       </select>
                       <span className="text-xs leading-5 text-stone-500">
-                        feed：Feed 原生廣告卡，每 6 張情報後插入。hero：首頁橫幅
-                        Banner，只顯示 active 且 priority 最高的一則，建議使用橫幅圖片，target_url
-                        可空。detail：詳情頁預留，目前前台尚未顯示。
+                        feed：Feed 原生廣告卡，每 6 張情報後插入。hero：首頁 Hero
+                        Banner，最多顯示前 3 則 active hero 廣告並輪播，依
+                        priority 由高到低排序。detail：詳情頁預留，目前前台尚未顯示。
                       </span>
                     </label>
                   </div>
