@@ -130,6 +130,10 @@ supabase/migrations/20260429049000_harden_post_likes.sql
 supabase/migrations/20260429050000_create_sponsored_ad_images_bucket.sql
 ```
 
+```txt
+supabase/migrations/20260429051000_create_sponsored_ad_stats_rpc.sql
+```
+
 可選：加入測試資料：
 
 ```txt
@@ -612,7 +616,7 @@ order by sp.id desc;
 - 點擊數
 - CTR %
 
-目前成效查詢由前端分別讀取 `sponsored_posts`、`ad_impressions`、`ad_clicks` 後聚合，適合作為 MVP。追蹤資料目前只聚合最近 5000 筆 impressions 與最近 5000 筆 clicks。
+目前成效查詢由 `get_sponsored_ad_stats()` RPC 在資料庫端聚合，不再由前端拉最近 5000 筆 raw `ad_impressions` / `ad_clicks` 後聚合。
 
 Admin 成效數字採去重估算：
 
@@ -620,15 +624,19 @@ Admin 成效數字採去重估算：
 - clicks：以 `ad_id + session_id + created_at 日期` 去重。
 - `session_id is null` 的舊資料會 fallback 使用 row id，避免全部合併。
 - CTR = 去重點擊 / 去重曝光 * 100。
+- RPC 使用 `security definer`，會先檢查 `public.is_admin()`；非 admin 呼叫會被拒絕。
 
-這不是正式 anti-fraud，也不代表精準商業結算數據。資料量變大後，建議改成 server-side RPC、materialized view、pagination 或 analytics pipeline。
+這不是正式 anti-fraud，也不代表精準商業結算數據。資料量更大後，建議改成 materialized view、日期區間查詢、pagination 或 analytics pipeline。
 
 本階段限制：
 
 - 不做圖表。
-- 不做廣告新增 / 編輯 / 刪除後台。
+- 廣告成效面板不負責新增 / 編輯 / 刪除廣告；這些操作請使用「廣告管理」入口。
 - 不做付款。
-- 不做報表匯出。
+- 不做日期區間篩選。
+- 不做匯出。
+- 不做正式 anti-fraud。
+- 不做 materialized view。
 - 不做正式 BI 分析。
 - 仍可被進階 bot 灌水。
 - localStorage session 可被清除。

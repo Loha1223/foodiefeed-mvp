@@ -9,7 +9,6 @@ import type {
 } from "@/types/foodie";
 
 const AD_SESSION_STORAGE_KEY = "foodiefeed_ad_session_id";
-const AD_STATS_TRACKING_LIMIT = 5000;
 const MAX_TRACKING_PAGE_PATH_LENGTH = 300;
 const MAX_TRACKING_TARGET_URL_LENGTH = 500;
 const MAX_TRACKING_SESSION_ID_LENGTH = 120;
@@ -40,21 +39,17 @@ type SponsoredPostRow = {
   priority: number | null;
 };
 
-type SponsoredAdStatsPostRow = {
+type SponsoredAdStatsRow = {
   id: number;
   title: string;
   brand_name: string;
   placement: string | null;
+  is_active: boolean | null;
   starts_at: string | null;
   ends_at: string;
-  is_active: boolean | null;
-};
-
-type AdTrackingRow = {
-  id: number;
-  ad_id: number | null;
-  session_id: string | null;
-  created_at: string;
+  impressions: number | string | null;
+  clicks: number | string | null;
+  ctr_percent: number | string | null;
 };
 
 type SponsoredPostFilters = {
@@ -617,32 +612,6 @@ export async function trackAdClick(input: TrackAdClickInput): Promise<void> {
   }
 }
 
-function countUniqueTrackingRows(rows: AdTrackingRow[]): Record<number, number> {
-  const uniqueKeysByAdId = rows.reduce<Record<number, Set<string>>>((sets, row) => {
-    if (row.ad_id === null) {
-      return sets;
-    }
-
-    const trackingDate = row.created_at.slice(0, 10);
-    const sessionScope = row.session_id || `row_${row.id}`;
-    const uniqueKey = `${sessionScope}:${trackingDate}`;
-
-    if (!sets[row.ad_id]) {
-      sets[row.ad_id] = new Set<string>();
-    }
-
-    sets[row.ad_id].add(uniqueKey);
-    return sets;
-  }, {});
-
-  return Object.fromEntries(
-    Object.entries(uniqueKeysByAdId).map(([adId, uniqueKeys]) => [
-      Number(adId),
-      uniqueKeys.size,
-    ]),
-  );
-}
-
 export async function fetchSponsoredAdStats(): Promise<SponsoredAdStats[]> {
   const supabase = getSupabaseClient();
 
@@ -650,67 +619,32 @@ export async function fetchSponsoredAdStats(): Promise<SponsoredAdStats[]> {
     throw new Error("Supabase env is not configured");
   }
 
-  const { data: sponsoredPostsData, error: sponsoredPostsError } =
-    await supabase
-      .from("sponsored_posts")
-      .select("id,title,brand_name,placement,starts_at,ends_at,is_active")
-      .order("created_at", { ascending: false });
+  const { data, error } = await supabase.rpc("get_sponsored_ad_stats");
 
-  if (sponsoredPostsError) {
-    throw new Error(sponsoredPostsError.message);
+  if (error) {
+    if (error.message.includes("admin_required")) {
+      throw new Error("你沒有管理員權限");
+    }
+
+    throw new Error(error.message);
   }
 
-  const sponsoredPosts = (sponsoredPostsData ??
-    []) as SponsoredAdStatsPostRow[];
-
-  if (sponsoredPosts.length === 0) {
-    return [];
-  }
-
-  const { data: impressionsData, error: impressionsError } = await supabase
-    .from("ad_impressions")
-    .select("id,ad_id,session_id,created_at")
-    .order("created_at", { ascending: false })
-    .limit(AD_STATS_TRACKING_LIMIT);
-
-  if (impressionsError) {
-    throw new Error(impressionsError.message);
-  }
-
-  const { data: clicksData, error: clicksError } = await supabase
-    .from("ad_clicks")
-    .select("id,ad_id,session_id,created_at")
-    .order("created_at", { ascending: false })
-    .limit(AD_STATS_TRACKING_LIMIT);
-
-  if (clicksError) {
-    throw new Error(clicksError.message);
-  }
-
-  const impressionCounts = countUniqueTrackingRows(
-    (impressionsData ?? []) as AdTrackingRow[],
-  );
-  const clickCounts = countUniqueTrackingRows(
-    (clicksData ?? []) as AdTrackingRow[],
-  );
-
-  return sponsoredPosts.map((post) => {
-    const impressions = impressionCounts[post.id] ?? 0;
-    const clicks = clickCounts[post.id] ?? 0;
-    const ctrPercent =
-      impressions === 0 ? 0 : Number(((clicks / impressions) * 100).toFixed(2));
+  return ((data ?? []) as SponsoredAdStatsRow[]).map((row) => {
+    const impressions = Number(row.impressions ?? 0);
+    const clicks = Number(row.clicks ?? 0);
+    const ctrPercent = Number(row.ctr_percent ?? 0);
 
     return {
-      id: post.id,
-      title: post.title,
-      brand_name: post.brand_name,
-      placement: post.placement,
-      is_active: post.is_active ?? false,
-      starts_at: post.starts_at,
-      ends_at: post.ends_at,
-      impressions,
-      clicks,
-      ctr_percent: ctrPercent,
+      id: row.id,
+      title: row.title,
+      brand_name: row.brand_name,
+      placement: row.placement,
+      is_active: row.is_active ?? false,
+      starts_at: row.starts_at,
+      ends_at: row.ends_at,
+      impressions: Number.isFinite(impressions) ? impressions : 0,
+      clicks: Number.isFinite(clicks) ? clicks : 0,
+      ctr_percent: Number.isFinite(ctrPercent) ? ctrPercent : 0,
     };
   });
 }

@@ -106,7 +106,8 @@ export function AdminAdStatsPanel({
               Sponsored Posts 的去重曝光、去重點擊與 CTR 摘要。
             </p>
             <p className="mt-1 text-xs leading-5 text-stone-500">
-              目前統計採 session + 日期去重，適合 MVP 參考，非正式廣告平台歸因。
+              目前統計由資料庫端依 session + 日期去重聚合，適合 MVP
+              營運參考，非正式廣告平台歸因。
             </p>
           </div>
           <div className="flex gap-2">
