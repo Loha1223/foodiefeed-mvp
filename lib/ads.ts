@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/auth";
+import { deleteSponsoredAdImageByUrl } from "@/lib/adStorage";
 import type {
   CreateSponsoredPostInput,
   SponsoredAdStats,
@@ -435,6 +436,19 @@ export async function updateSponsoredPost(
   const supabase = getClientOrThrow();
   const payload = buildSponsoredPostPayload(input);
 
+  const { data: existingData, error: existingError } = await supabase
+    .from("sponsored_posts")
+    .select("image_url")
+    .eq("id", id)
+    .single();
+
+  if (existingError) {
+    throw new Error(existingError.message);
+  }
+
+  const oldImageUrl = (existingData as Pick<SponsoredPostRow, "image_url">)
+    .image_url;
+
   const { data, error } = await supabase
     .from("sponsored_posts")
     .update(payload)
@@ -446,7 +460,23 @@ export async function updateSponsoredPost(
     throw new Error(error.message);
   }
 
-  return toSponsoredPost(data as SponsoredPostRow);
+  const updatedSponsoredPost = toSponsoredPost(data as SponsoredPostRow);
+
+  // DB update is the source of truth. If old image cleanup fails, keep the
+  // updated ad and leave cleanup for later manual/orphan maintenance.
+  if (oldImageUrl && updatedSponsoredPost.image_url !== oldImageUrl) {
+    try {
+      await deleteSponsoredAdImageByUrl(oldImageUrl);
+    } catch (cleanupError) {
+      console.warn(
+        cleanupError instanceof Error
+          ? `Sponsored ad image cleanup failed: ${cleanupError.message}`
+          : "Sponsored ad image cleanup failed",
+      );
+    }
+  }
+
+  return updatedSponsoredPost;
 }
 
 export async function toggleSponsoredPostActive(
@@ -472,15 +502,29 @@ export async function toggleSponsoredPostActive(
 export async function deleteSponsoredPost(id: number): Promise<void> {
   const supabase = getClientOrThrow();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("sponsored_posts")
     .delete()
     .eq("id", id)
-    .select("id")
+    .select()
     .single();
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  const deletedSponsoredPost = toSponsoredPost(data as SponsoredPostRow);
+
+  // DB delete has already succeeded. Storage cleanup is best-effort so the UI
+  // should not rollback a deleted ad if Storage remove is denied or unavailable.
+  try {
+    await deleteSponsoredAdImageByUrl(deletedSponsoredPost.image_url);
+  } catch (cleanupError) {
+    console.warn(
+      cleanupError instanceof Error
+        ? `Sponsored ad image cleanup failed: ${cleanupError.message}`
+        : "Sponsored ad image cleanup failed",
+    );
   }
 }
 

@@ -447,7 +447,18 @@ Admin 廣告管理支援兩種圖片來源：
 - 不做旋轉或高階圖片編輯。
 - Hero 輪播目前僅支援 sponsored hero（最多 3 則），不支援自然貼文輪播。
 - 手機版裁切工具為基本可用。
-- 廣告圖片上傳不會自動刪除舊圖；若需要清理舊素材，請由 admin 在 Supabase Storage 中確認後處理。
+- 廣告圖片 cleanup 採 best-effort：更新或刪除廣告時會嘗試清理符合安全條件的舊圖，但失敗不會 rollback 廣告資料操作。
+
+Sponsored ad image cleanup：
+
+- 更新廣告圖片時，若舊圖來自 `sponsored-ad-images` bucket 且 object path 以 `ads/` 開頭，會在 `sponsored_posts` 更新成功後嘗試刪除舊圖。
+- 刪除廣告時，若該廣告圖片來自 `sponsored-ad-images` bucket 且 object path 以 `ads/` 開頭，會在 `sponsored_posts` 刪除成功後嘗試刪除圖片。
+- 外部 `image_url` 不會刪除。
+- `/placeholder-food.jpg` 或其他本機 placeholder 不會刪除。
+- 非 `sponsored-ad-images` bucket 的圖片不會刪除。
+- 非 `ads/` path 的 Storage object 不會刪除。
+- Cleanup 失敗只會在 console 顯示 warning，不會阻擋廣告更新或刪除。
+- 仍可能出現 orphan images；正式營運後建議補 scheduled cleanup、orphan scanner 或 Storage usage dashboard。
 
 ### 首頁 Hero Banner MVP
 
@@ -675,7 +686,7 @@ Admin 成效數字採去重估算：
 - 可依狀態篩選：全部、投放中、尚未開始、已結束、停用。
 - 會顯示 image_url / target_url 是否存在。
 
-刪除 `sponsored_posts` 時，對應的 `ad_impressions` 與 `ad_clicks` 會因 foreign key `on delete cascade` 一併刪除。
+刪除 `sponsored_posts` 時，對應的 `ad_impressions` 與 `ad_clicks` 會因 foreign key `on delete cascade` 一併刪除。若該廣告圖片來自 `sponsored-ad-images` bucket 的 `ads/` path，系統也會在刪除 DB row 成功後嘗試清理 Storage object；外部 URL、placeholder、其他 bucket 或非 `ads/` path 一律不刪。Storage cleanup 失敗只會 `console.warn`，不會 rollback 廣告刪除。
 
 本階段仍不做付款、報表匯出、點擊 / 曝光去重、廣告審核流程或操作紀錄。正式營運前建議補上廣告審核、操作 audit log、素材管理、付款狀態與投放預算控管。
 
