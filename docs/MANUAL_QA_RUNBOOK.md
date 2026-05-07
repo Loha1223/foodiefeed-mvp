@@ -14,6 +14,54 @@
 - 一般使用者 email：
 - Admin 使用者 email：
 
+## 0.1 Beta freeze / Release 前置（Migration / RPC / 權限）檢查
+
+### Case 0.1.1 Final migration 與 routines 存在
+
+目標：確認 production Supabase 已套用最後 migration，且關鍵 routines 存在。
+
+預期結果：
+
+- 最後 migration 應為 `20260429051000_create_sponsored_ad_stats_rpc.sql`。
+- routines `is_admin`、`increment_post_likes`、`get_sponsored_ad_stats` 都存在。
+
+Read-only check（SQL）：
+
+```sql
+select routine_name
+from information_schema.routines
+where routine_schema = 'public'
+  and routine_name in (
+    'is_admin',
+    'increment_post_likes',
+    'get_sponsored_ad_stats'
+  )
+order by routine_name;
+```
+
+記錄：
+
+- 結果：通過 / 失敗
+- 實際最後 migration：
+- 備註：
+
+### Case 0.1.2 廣告成效資料來源與權限（get_sponsored_ad_stats）
+
+目標：確認 Admin 廣告成效由 `get_sponsored_ad_stats` RPC 取得，且一般使用者不可讀取成效資料。
+
+預期結果：
+
+- Admin 登入後可在「廣告成效」看到資料（資料來源為 `get_sponsored_ad_stats`）。
+- 一般使用者看不到「廣告成效」入口。
+- 即使繞過前端，一般使用者也不可讀取 ad stats（應被 RLS / routine 權限拒絕）。
+
+記錄：
+
+- 結果：通過 / 失敗
+- Admin 測試帳號：
+- 一般使用者測試帳號：
+- 備註：
+
 ## 1. 30 分鐘 Soft Launch 必跑 QA 清單
 
 這份清單是最小必跑版本，目標是在 30 分鐘內確認主要風險沒有阻塞上線。
@@ -709,6 +757,8 @@ limit 30;
 - 欄位顯示去重曝光、去重點擊、去重 CTR。
 - Panel 上方有 MVP 去重統計提示。
 - 無資料時顯示 empty state。
+- [ ] 成效資料由 `get_sponsored_ad_stats` RPC 取得（不是由前端拉 raw `ad_impressions` / `ad_clicks` 自行聚合）。
+- [ ] 一般使用者不可讀取 ad stats（沒有入口，且繞過前端呼叫也應被拒絕）。
 
 記錄：
 
@@ -741,6 +791,10 @@ limit 30;
 - 啟用且投放期間有效時前台可顯示。
 - 刪除前有確認訊息。
 - 刪除 sponsored post 後，相關 impressions / clicks 透過 cascade 移除。
+- [ ] 更新廣告圖片後：若舊圖片來自 `sponsored-ad-images`（且符合系統安全條件），系統會 **嘗試** 清理舊 object（best-effort）。
+- [ ] 刪除廣告後：若圖片來自 `sponsored-ad-images`（且符合系統安全條件），系統會 **嘗試** 清理該 object（best-effort）。
+- [ ] 外部 `image_url`（非 `sponsored-ad-images`）不應被刪除。
+- [ ] cleanup 失敗不阻斷廣告 update/delete：廣告資料仍應成功更新/刪除（可能只在 console/log 留下 warning）。
 
 Write test，僅在測試資料上執行：
 
@@ -755,6 +809,7 @@ order by created_at desc;
 
 - 結果：通過 / 失敗
 - 測試 ad id：
+- 舊 sponsored-ad-images object path（若有）：
 - 備註：
 
 ### Case 14.2 Admin 廣告圖片上傳與裁切

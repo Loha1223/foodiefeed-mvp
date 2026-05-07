@@ -153,6 +153,15 @@ order by policyname;
 - [ ] Hero CTA click 寫入 `ad_clicks` 且 `placement = 'hero'`。
 - [ ] tracking 寫入失敗不阻擋 Hero 顯示與 CTA 跳轉。
 
+## 3.2 圖片裁切工具（Image Cropper）檢查
+
+- [ ] PostModal 限時情報：選擇本機圖片後可套用 **4:3** 裁切。
+- [ ] Admin 廣告管理（Hero 版位）：選擇 `placement = hero` 並上傳本機圖片後可套用 **2:1** 裁切。
+- [ ] Admin 廣告管理（Feed 版位）：選擇 `placement = feed` 並上傳本機圖片後可套用 **4:3** 裁切。
+- [ ] 「使用原圖」流程正常：不套用裁切仍可送出、圖片可顯示。
+- [ ] 「取消裁切」流程正常：取消後不應改動既有選圖，且不應造成 UI crash。
+- [ ] 套用裁切後可正常上傳並顯示：送出後前台圖片可載入（含重新整理後仍可顯示）。
+
 ## 4. Auth Redirect URL 檢查
 
 到 Supabase Dashboard -> Authentication -> URL Configuration 檢查：
