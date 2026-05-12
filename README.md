@@ -257,6 +257,23 @@ HSTS 適合正式 HTTPS 網域。若改用自訂網域，需先確認全站 HTTP
 
 目前 sitemap 只列首頁，因為 posts 尚未有獨立 detail route。正式自訂網域上線時，請同步更新 `NEXT_PUBLIC_SITE_URL`。
 
+Google Search Console（正式環境）：
+
+- 已建立並驗證 `foodiefeed.tw` 資源
+- Sitemap submitted：`https://foodiefeed.tw/sitemap.xml`
+- Sitemap status：成功
+- Discovered pages：1
+- robots 檢查：`https://foodiefeed.tw/robots.txt`
+- sitemap 檢查：`https://foodiefeed.tw/sitemap.xml`
+
+SEO smoke test（deploy 後）：
+
+- 首頁可開啟
+- `robots.txt` 未阻擋首頁
+- `sitemap.xml` 使用正式網域 `https://foodiefeed.tw`
+- `/privacy`、`/terms`、`/contact` 可正常訪問
+- 可用 Search Console 網址審查要求建立索引
+
 ### Custom SMTP
 
 正式環境已使用 Resend：

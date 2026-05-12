@@ -35,6 +35,17 @@
   - `CNAME www -> cname.vercel-dns.com`
   - Resend `TXT` / `MX` / `DMARC` records 已生效。
 
+## 0.3 SEO / Search Console Sync 檢查（正式環境）
+
+- [ ] Google Search Console 已建立並驗證 `foodiefeed.tw`。
+- [ ] Sitemap submitted：`https://foodiefeed.tw/sitemap.xml`。
+- [ ] Sitemap status：成功。
+- [ ] Discovered pages：1（目前階段）。
+- [ ] `https://foodiefeed.tw/robots.txt` 可開啟。
+- [ ] `https://foodiefeed.tw/sitemap.xml` 可開啟。
+- [ ] `sitemap.xml` 內容使用正式網域 `https://foodiefeed.tw`。
+- [ ] 可使用 Search Console「網址審查」要求建立索引。
+
 ## 0.1 Beta freeze / Release 前置（Migration / RPC / 權限）檢查
 
 ### Case 0.1.1 Final migration 與 routines 存在
@@ -104,6 +115,9 @@ order by routine_name;
 - [ ] SponsoredCard 有清楚「贊助」標示。
 - [ ] SponsoredCard 點擊後可開新分頁，且不阻擋前台互動。
 - [ ] `/robots.txt` 與 `/sitemap.xml` 可開啟。
+- [ ] `/privacy`、`/terms`、`/contact` 可正常開啟。
+- [ ] `robots.txt` 未阻擋首頁（`/` 可被抓取）。
+- [ ] `sitemap.xml` 使用正式網域 `https://foodiefeed.tw`。
 - [ ] Browser console 沒有阻塞功能的錯誤。
 - [ ] 測試資料已清理或標記。
 
@@ -1013,12 +1027,15 @@ order by schemaname, tablename, policyname;
 7. 登入 admin，檢查 Admin 管理、廣告成效、廣告管理。
 8. 刪除測試資料。
 9. 開啟 `/robots.txt` 與 `/sitemap.xml`。
+10. 開啟 `/privacy`、`/terms`、`/contact`。
+11. 到 Search Console 使用「網址審查」測試首頁是否可要求建立索引。
 
 預期結果：
 
 - 核心流程都可用。
 - 測試資料可清理。
 - 沒有需要 rollback 的 blocking issue。
+- SEO smoke test 通過（首頁、robots、sitemap、Legal 頁面、網址審查）。
 
 記錄：
 

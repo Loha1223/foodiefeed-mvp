@@ -260,6 +260,15 @@ on conflict (id) do update set role = 'admin';
 - [ ] `/robots.txt` 包含 sitemap URL。
 - [ ] `/sitemap.xml` 包含首頁 URL。
 - [ ] 若使用自訂網域，sitemap URL 是自訂網域。
+- [ ] `https://foodiefeed.tw/robots.txt` 可開啟。
+- [ ] `https://foodiefeed.tw/sitemap.xml` 可開啟。
+- [ ] Search Console 已驗證 `foodiefeed.tw`。
+- [ ] Search Console 顯示 Sitemap submitted：`https://foodiefeed.tw/sitemap.xml`。
+- [ ] Search Console 顯示 Sitemap status：成功。
+- [ ] Search Console 顯示 Discovered pages：1（目前階段）。
+- [ ] `sitemap.xml` 中 URL 使用正式網域 `https://foodiefeed.tw`。
+- [ ] `/privacy`、`/terms`、`/contact` 可正常訪問（200）。
+- [ ] 可用 Search Console「網址審查」要求建立索引。
 
 ## 10. Security Headers 檢查
 
