@@ -6,13 +6,34 @@
 
 - 測試日期：
 - 測試人：
-- Production URL：
+- Production URL：`https://foodiefeed.tw`
 - Vercel Deployment URL：
 - Git commit SHA：
 - Supabase Project：
 - 測試裝置 / Browser：
 - 一般使用者 email：
 - Admin 使用者 email：
+
+## 0.2 Production Environment Sync 檢查（正式環境）
+
+- [ ] 主網域為 `https://foodiefeed.tw`，且 `https://www.foodiefeed.tw` 會轉址到主網域。
+- [ ] Supabase Auth Site URL = `https://foodiefeed.tw`。
+- [ ] Redirect URLs 已包含：
+  - `http://localhost:3000`
+  - `http://localhost:3001`
+  - `https://foodiefeed-mvp.vercel.app`
+  - `https://foodiefeed.tw`
+  - `https://www.foodiefeed.tw`
+- [ ] Vercel env 已設定：
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `NEXT_PUBLIC_SITE_URL=https://foodiefeed.tw`
+- [ ] Supabase Custom SMTP provider = Resend。
+- [ ] Sender = `FoodieFeed 味鮮牆 <no-reply@foodiefeed.tw>`。
+- [ ] Cloudflare DNS：
+  - `A foodiefeed.tw -> 76.76.21.21`
+  - `CNAME www -> cname.vercel-dns.com`
+  - Resend `TXT` / `MX` / `DMARC` records 已生效。
 
 ## 0.1 Beta freeze / Release 前置（Migration / RPC / 權限）檢查
 
@@ -73,11 +94,13 @@ order by routine_name;
 - [ ] Email magic link 登入成功。
 - [ ] 登入後可新增一筆測試情報。
 - [ ] 本機圖片可上傳，情報圖片可顯示。
+- [ ] 圖片裁切流程可用（PostModal 4:3、Admin hero 2:1、Admin feed 4:3）。
 - [ ] 可在 DetailModal 新增留言，留言數即時 +1。
 - [ ] 同一使用者重複按同一篇讚會顯示已按過讚，數字不重複增加。
 - [ ] 「我的投稿」只顯示自己的投稿，包含剛新增的測試情報。
 - [ ] Admin 可看到 `Admin 管理`、`廣告成效`、`廣告管理`。
 - [ ] Admin 可刪除測試情報。
+- [ ] Hero carousel 顯示與切換正常。
 - [ ] SponsoredCard 有清楚「贊助」標示。
 - [ ] SponsoredCard 點擊後可開新分頁，且不阻擋前台互動。
 - [ ] `/robots.txt` 與 `/sitemap.xml` 可開啟。

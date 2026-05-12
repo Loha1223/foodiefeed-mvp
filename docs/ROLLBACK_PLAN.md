@@ -243,9 +243,20 @@ where p.id = counts.post_id;
 
 1. 檢查 Supabase Auth Email provider 是否啟用。
 2. 檢查 Site URL 與 Redirect URLs。
+   - Site URL 應為 `https://foodiefeed.tw`
+   - Redirect URLs 至少包含：
+     - `http://localhost:3000`
+     - `http://localhost:3001`
+     - `https://foodiefeed-mvp.vercel.app`
+     - `https://foodiefeed.tw`
+     - `https://www.foodiefeed.tw`
 3. 檢查 Supabase 內建 email provider rate limit。
-4. 若是新前端造成，使用 Vercel 回滾。
-5. 若是寄信限制，短期降低邀請流量，正式處理改 Custom SMTP。
+4. 若使用 Custom SMTP（Resend），檢查：
+   - domain `foodiefeed.tw` 是否仍為 verified
+   - sender 是否為 `no-reply@foodiefeed.tw`
+   - Resend 後台是否有退信或拒收
+5. 若是新前端造成，使用 Vercel 回滾。
+6. 若是寄信限制，短期降低邀請流量，正式處理改 Custom SMTP。
 
 ### 5.5 Storage 圖片上傳 / 刪除壞掉
 

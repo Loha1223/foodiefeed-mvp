@@ -6,7 +6,7 @@
 
 - [ ] 測試日期：
 - [ ] 測試人：
-- [ ] Production URL：
+- [ ] Production URL：`https://foodiefeed.tw`
 - [ ] Vercel Project：
 - [ ] Supabase Project：
 - [ ] Git commit SHA：
@@ -169,8 +169,10 @@ order by policyname;
 - [ ] Site URL 是 production URL。
 - [ ] Redirect URLs 包含 `http://localhost:3000`。
 - [ ] Redirect URLs 包含 `http://localhost:3001`。
-- [ ] Redirect URLs 包含 Vercel production URL。
-- [ ] 若使用自訂網域，Redirect URLs 包含自訂網域。
+- [ ] Site URL = `https://foodiefeed.tw`。
+- [ ] Redirect URLs 包含 `https://foodiefeed-mvp.vercel.app`。
+- [ ] Redirect URLs 包含 `https://foodiefeed.tw`。
+- [ ] Redirect URLs 包含 `https://www.foodiefeed.tw`。
 - [ ] 若允許 Preview Deployments，已明確加入 preview URL pattern 或指定 URL。
 - [ ] 若不允許 Preview Deployments，團隊已知道 preview 無法測 magic link。
 
@@ -181,10 +183,26 @@ order by policyname;
 - [ ] `NEXT_PUBLIC_SUPABASE_URL` 已設定。
 - [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY` 已設定。
 - [ ] `NEXT_PUBLIC_SITE_URL` 已設定為 production URL。
+- [ ] `NEXT_PUBLIC_SITE_URL=https://foodiefeed.tw`。
 - [ ] Production environment 已設定上述 env。
 - [ ] Preview environment 已依團隊策略設定上述 env。
 - [ ] 沒有設定 Supabase `service_role` key。
 - [ ] 沒有把 `.env.local` commit 到 repo。
+
+## 5.1 Custom SMTP（Resend）檢查
+
+- [ ] Supabase Custom SMTP provider 為 Resend。
+- [ ] Resend domain 已驗證：`foodiefeed.tw`。
+- [ ] Sender 設定為 `FoodieFeed 味鮮牆 <no-reply@foodiefeed.tw>`。
+- [ ] Production redeploy 後，magic link 可正常寄送與登入。
+
+## 5.2 Cloudflare DNS 檢查
+
+- [ ] `A` record：`foodiefeed.tw` -> `76.76.21.21`。
+- [ ] `CNAME` record：`www` -> `cname.vercel-dns.com`。
+- [ ] Resend 相關 `TXT` records 已設定並生效。
+- [ ] Resend 相關 `MX` records 已設定並生效。
+- [ ] `DMARC` record 已設定並生效。
 
 ## 6. Vercel Deployment 檢查
 
@@ -295,6 +313,7 @@ where title ilike '%test%';
 
 - [ ] Soft Launch Checklist 全部必要項目已完成。
 - [ ] 30 分鐘 Manual QA 必跑清單已通過。
+- [ ] Production smoke test 已通過：magic link、發文、圖片裁切、留言、按讚、Hero carousel、廣告管理、廣告成效、`/robots.txt`、`/sitemap.xml`。
 - [ ] Rollback Plan 已閱讀。
 - [ ] Vercel rollback 的上一個 healthy deployment 已確認。
 - [ ] Supabase production 專案沒有正在進行的危險 SQL 操作。

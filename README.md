@@ -62,6 +62,14 @@ CI 目前不測真實 Supabase CRUD、Auth、Storage、RLS 或 E2E flow；這些
 - `sponsored-ad-images` bucket / policy 權限檢核
 - Hero carousel（0/1/2-3/>3）、dismiss / restore、`placement = 'hero'` tracking 檢核
 
+## Production Environment（正式環境基準）
+
+- Production URL：`https://foodiefeed.tw`
+- `https://www.foodiefeed.tw` 需轉址至 `https://foodiefeed.tw`
+- Supabase Auth Site URL：`https://foodiefeed.tw`
+- Supabase Custom SMTP provider：Resend
+- Sender：`FoodieFeed 味鮮牆 <no-reply@foodiefeed.tw>`
+
 ## Supabase 設定與測試
 
 ### .env.local
@@ -149,13 +157,15 @@ supabase/seed.sql
 1. Authentication -> Providers
 2. 確認 Email provider 已啟用
 3. Authentication -> URL Configuration
-4. Site URL 設定為 Vercel production URL
+4. Site URL 設定為 `https://foodiefeed.tw`
 5. Redirect URLs 加入：
 
 ```txt
 http://localhost:3000
 http://localhost:3001
-你的 Vercel production URL
+https://foodiefeed-mvp.vercel.app
+https://foodiefeed.tw
+https://www.foodiefeed.tw
 ```
 
 本階段狀態：
@@ -178,10 +188,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY
 NEXT_PUBLIC_SITE_URL
 ```
 
-`NEXT_PUBLIC_SITE_URL` 建議使用正式 production URL，例如：
+正式環境建議值：
 
 ```txt
-https://your-domain.example
+NEXT_PUBLIC_SITE_URL=https://foodiefeed.tw
 ```
 
 若尚未設定，程式會 fallback 到：
@@ -196,8 +206,9 @@ https://foodiefeed-mvp.vercel.app
 
 - `http://localhost:3000`
 - `http://localhost:3001`
-- Vercel production URL
-- 若有自訂網域，加入自訂網域
+- `https://foodiefeed-mvp.vercel.app`
+- `https://foodiefeed.tw`
+- `https://www.foodiefeed.tw`
 - 若使用 Vercel Preview Deployments，需明確決定是否允許 preview URL 登入
 
 ### Security Headers
@@ -242,14 +253,20 @@ HSTS 適合正式 HTTPS 網域。若改用自訂網域，需先確認全站 HTTP
 
 ### Custom SMTP
 
-Supabase 內建 Email provider 有 rate limit。正式上線建議設定 Custom SMTP，例如：
+正式環境已使用 Resend：
 
-- Resend
-- Postmark
-- SendGrid
-- Brevo
+- Provider：Resend
+- Verified domain：`foodiefeed.tw`
+- Sender：`no-reply@foodiefeed.tw`
+- 建議定期檢查 Resend 後台寄送成功率、退信與封鎖事件
 
-本階段不實作 SMTP，只列為 production checklist。
+### Cloudflare DNS（正式環境）
+
+請確認 DNS 設定包含：
+
+- `A`：`foodiefeed.tw` -> `76.76.21.21`
+- `CNAME`：`www` -> `cname.vercel-dns.com`
+- Resend 驗證所需 `TXT` / `MX` / `DMARC` records 已正確生效
 
 ### Post-deploy QA
 
@@ -257,9 +274,10 @@ Supabase 內建 Email provider 有 rate limit。正式上線建議設定 Custom 
 
 - Magic link 登入
 - 發文
+- 圖片裁切（PostModal 4:3 / Admin hero 2:1 / Admin feed 4:3）
 - 留言
-- 圖片上傳
 - 按讚防重複
+- Hero carousel
 - SponsoredCard 曝光 / 點擊
 - Admin 廣告管理
 - Admin 廣告成效
