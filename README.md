@@ -62,6 +62,12 @@ CI 目前不測真實 Supabase CRUD、Auth、Storage、RLS 或 E2E flow；這些
 - `sponsored-ad-images` bucket / policy 權限檢核
 - Hero carousel（0/1/2-3/>3）、dismiss / restore、`placement = 'hero'` tracking 檢核
 
+## Legal / Trust Pages
+
+- `/privacy`
+- `/terms`
+- `/contact`
+
 ## Production Environment（正式環境基準）
 
 - Production URL：`https://foodiefeed.tw`

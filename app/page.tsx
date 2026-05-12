@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { AdminAdManagerPanel } from "@/components/admin/AdminAdManagerPanel";
 import { AdminAdStatsPanel } from "@/components/admin/AdminAdStatsPanel";
 import { AdminPanel } from "@/components/admin/AdminPanel";
@@ -839,8 +840,19 @@ function HomeContent() {
         onPostClick={handlePostClick}
         onPostLike={handleLike}
       />
-      <footer className="mx-auto max-w-6xl px-4 pb-8 pt-1 text-center text-xs text-stone-500 sm:px-6">
-        FoodieFeed 味鮮牆｜限時美食情報站
+      <footer className="mx-auto max-w-6xl px-4 pb-8 pt-3 text-center text-xs text-stone-500 sm:px-6">
+        <p>FoodieFeed 味鮮牆｜限時美食情報站</p>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[13px]">
+          <Link href="/privacy" className="hover:text-stone-700 hover:underline">
+            隱私權政策
+          </Link>
+          <Link href="/terms" className="hover:text-stone-700 hover:underline">
+            服務條款
+          </Link>
+          <Link href="/contact" className="hover:text-stone-700 hover:underline">
+            聯絡我們
+          </Link>
+        </div>
       </footer>
       <PostModal
         isOpen={isPostModalOpen}
