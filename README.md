@@ -56,6 +56,10 @@ CI 目前不測真實 Supabase CRUD、Auth、Storage、RLS 或 E2E flow；這些
 - [Manual QA Runbook](docs/MANUAL_QA_RUNBOOK.md)
 - [Rollback Plan](docs/ROLLBACK_PLAN.md)
 
+## Monitoring / Operations
+
+- [Production Monitoring Runbook](docs/PRODUCTION_MONITORING_RUNBOOK.md)
+
 上述 checklist / runbook 已納入：
 
 - `20260429050000_create_sponsored_ad_images_bucket.sql` 檢核
